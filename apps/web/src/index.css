@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Smooth font rendering */
+html, body { height: 100%; }
+
+/* Custom animations */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(-5%); }
+  50% { transform: translateY(0); }
+}
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(0.98); }
+}
+
+.animate-bounce-slow { animation: bounce-slow 4s infinite ease-in-out; }
+.animate-pulse-slow  { animation: pulse-slow 3s infinite ease-in-out; }
