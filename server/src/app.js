@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth.routes");
 const studentRoutes = require("./routes/student.routes");
 const timetableRoutes = require("./routes/timetable.routes");
 const attendanceRoutes = require("./routes/attendance.routes");
+const feeRoutes = require("./routes/fees.routes");
 
 const app = express();
 
@@ -23,5 +24,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/timetable", timetableRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/fees", feeRoutes);
 
 module.exports = app;

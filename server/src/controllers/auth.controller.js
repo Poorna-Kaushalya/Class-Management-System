@@ -1,14 +1,21 @@
+// server/src/controllers/auth.controller.js
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User.model");
 
 function signAccessToken(user) {
   return jwt.sign(
-    { userId: user._id.toString(), role: user.role },
+    {
+      id: user._id.toString(),
+      role: user.role,
+      email: user.email,
+      studentId: user.studentId, 
+    },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.ACCESS_EXPIRES_IN || "15m" }
+    { expiresIn: "15m" }
   );
 }
+
 
 function signRefreshToken(user) {
   return jwt.sign(
@@ -30,22 +37,26 @@ async function login(req, res) {
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
 
-  // store refresh token HASH in DB 
   const refreshHash = await bcrypt.hash(refreshToken, 10);
   user.refreshTokenHash = refreshHash;
   await user.save();
 
-  // send refresh as httpOnly cookie 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false, 
+    secure: false,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
   return res.json({
     accessToken,
-    user: { id: user._id, fullName: user.fullName, email: user.email, role: user.role },
+    user: {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      studentId: user.studentId, 
+    },
   });
 }
 

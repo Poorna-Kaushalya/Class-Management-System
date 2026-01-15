@@ -3,12 +3,22 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import logo from "../assets/Landing_Logo_icon.png";
 import AttendanceCalendar from "../Components/AttendanceCalendar";
+import AlgeonLoader from "../Components/AlgeonLoader";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 export default function StudentDashboard() {
   const API = "http://localhost:5000";
 
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+
+  // loaders
+  const [pageLoading, setPageLoading] = useState(true);
+  const [monthLoading, setMonthLoading] = useState(false);
+
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -23,19 +33,11 @@ export default function StudentDashboard() {
   const [calMonth, setCalMonth] = useState(new Date().getMonth()); // 0-11
 
   // Data needed by calendar
-  const [timetableDays, setTimetableDays] = useState({}); // { Monday:true }
-  const [attendanceMap, setAttendanceMap] = useState({}); // { "2026-01-18":"PRESENT" }
+  const [timetableDays, setTimetableDays] = useState({});
+  const [attendanceMap, setAttendanceMap] = useState({});
 
-  const attendanceStats = useMemo(
-    () => ({
-      present: 18,
-      absent: 5,
-      late: 1,
-      percentage: 90,
-      lastUpdated: "2026-01-15",
-    }),
-    []
-  );
+  // Fees (Jan–Dec) for year
+  const [feeYearRecords, setFeeYearRecords] = useState([]); // array of 12
 
   const marks = useMemo(
     () => [
@@ -46,19 +48,8 @@ export default function StudentDashboard() {
     []
   );
 
-  const fees = useMemo(
-    () => ({
-      monthlyFee: 2500,
-      due: 2500,
-      dueDate: "2026-01-30",
-      lastPayment: "2025-12-30",
-      paymentStatus: "Due",
-    }),
-    []
-  );
-
   function monthKey(y, m) {
-    return `${y}-${String(m + 1).padStart(2, "0")}`; 
+    return `${y}-${String(m + 1).padStart(2, "0")}`; // "YYYY-MM"
   }
 
   async function fetchAttendanceForMonth(y, m) {
@@ -89,25 +80,42 @@ export default function StudentDashboard() {
     const tt = res.data?.timetable || res.data || [];
     const daysObj = {};
     (tt || []).forEach((row) => {
-      if (row.day) daysObj[row.day] = true; 
+      if (row.day) daysObj[row.day] = true;
     });
     setTimetableDays(daysObj);
   }
 
+  //  get full year Jan–Dec
+  async function fetchFeesForYear(y) {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    const res = await axios.get(
+      `${API}/api/fees/me?year=${y}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setFeeYearRecords(res.data?.records || []);
+  }
+
+  // First load
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
       setErr("No access token found. Please login again.");
-      setLoading(false);
+      setPageLoading(false);
       return;
     }
 
     (async () => {
       try {
         setErr("");
-        setLoading(true);
+        setPageLoading(true);
 
-        // 1) profile
         const res = await axios.get(`${API}/api/students/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -118,25 +126,41 @@ export default function StudentDashboard() {
         setPhone(u?.phone || "");
         setSchoolName(u?.schoolName || "");
 
-        // 2) timetable days
         await fetchTimetableDays();
 
-        // 3) attendance for current month
-        await fetchAttendanceForMonth(calYear, calMonth);
+        await Promise.all([
+          fetchAttendanceForMonth(calYear, calMonth),
+          fetchFeesForYear(calYear),
+        ]);
       } catch (e) {
-        setErr(e.response?.data?.message || "Failed to load profile");
+        setErr(e.response?.data?.message || "Failed to load dashboard");
       } finally {
-        setLoading(false);
+        setPageLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // refetch attendance when month changes
   useEffect(() => {
-    fetchAttendanceForMonth(calYear, calMonth);
+    if (!user) return;
+
+    (async () => {
+      try {
+        setMonthLoading(true);
+        await fetchAttendanceForMonth(calYear, calMonth);
+      } catch (e) {
+        setErr(e.response?.data?.message || "Failed to load month data");
+      } finally {
+        setMonthLoading(false);
+      }
+    })();
+  }, [calYear, calMonth, user]);
+
+  // When year changes: refetch fees for year
+  useEffect(() => {
+    if (!user) return;
+    fetchFeesForYear(calYear);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calYear, calMonth]);
+  }, [calYear, user]);
 
   async function handleSaveProfile() {
     setMsg("");
@@ -174,7 +198,8 @@ export default function StudentDashboard() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("role");
     localStorage.removeItem("user");
-    window.location.href = "/login";
+    sessionStorage.clear();
+    window.location.replace("/");
   }
 
   function prevMonth() {
@@ -187,6 +212,13 @@ export default function StudentDashboard() {
     });
   }
 
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toISOString().slice(0, 10);
+  }
+
   function nextMonth() {
     setCalMonth((m) => {
       if (m === 11) {
@@ -197,16 +229,7 @@ export default function StudentDashboard() {
     });
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="rounded-2xl bg-white border border-slate-200 px-6 py-5 shadow-sm">
-          <p className="font-bold text-slate-900">Loading dashboard...</p>
-          <p className="text-sm text-slate-500 mt-1">Please wait</p>
-        </div>
-      </div>
-    );
-  }
+  if (pageLoading) return <AlgeonLoader />;
 
   if (err && !user) {
     return (
@@ -224,6 +247,18 @@ export default function StudentDashboard() {
       </div>
     );
   }
+
+  function monthLabel(monthStr) {
+    if (!monthStr || !monthStr.includes("-")) return monthStr;
+
+    const [, mm] = monthStr.split("-");
+    const idx = Number(mm) - 1;
+    return MONTH_NAMES[idx] || monthStr;
+  }
+
+
+  const selectedMonthKey = monthKey(calYear, calMonth);
+  const selectedFee = feeYearRecords.find((r) => r.month === selectedMonthKey) || null;
 
   return (
     <div className="max-w-8xl bg-slate-50 min-h-screen">
@@ -313,8 +348,13 @@ export default function StudentDashboard() {
           </aside>
 
           {/* CENTER */}
-          <main className="lg:col-span-7 space-y-6">
-            {/*  CALENDAR */}
+          <main className="lg:col-span-6 space-y-6">
+            {monthLoading && (
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                Loading month data...
+              </div>
+            )}
+
             <AttendanceCalendar
               year={calYear}
               month={calMonth}
@@ -367,37 +407,56 @@ export default function StudentDashboard() {
           </main>
 
           {/* RIGHT */}
-          <aside className="lg:col-span-2 space-y-6">
+          <aside className="lg:col-span-3 space-y-6">
             <Card>
-              <h3 className="font-extrabold text-slate-900">Class Fee</h3>
-
-              <div className="mt-4 rounded-2xl bg-slate-900 text-white p-4">
-                <p className="text-xs text-white/70">Monthly Fee</p>
-                <p className="text-2xl font-black">LKR {fees.monthlyFee}</p>
-
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-white/70">Status</span>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
-                    {fees.paymentStatus}
-                  </span>
-                </div>
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-slate-900">Class Fees </h3>
+                <span className="text-xs font-bold text-slate-500">{calYear}</span>
               </div>
 
-              <div className="mt-4 space-y-3">
-                <InfoRow label="Due Amount" value={`LKR ${fees.due}`} />
-                <InfoRow label="Due Date" value={fees.dueDate} />
-                <InfoRow label="Last Payment" value={fees.lastPayment} />
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b">
+                      <th className="py-2 pr-1 font-semibold">Month</th>
+                      <th className="py-2 pr-1 font-semibold">Status</th>
+                      <th className="py-2 pr-1 font-semibold">Paid Date</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {feeYearRecords.map((r) => (
+                      <tr key={r.month} className="border-b last:border-b-0">
+                        <td className="py-0 pr-2 font-bold text-slate-900">
+                          {monthLabel(r.month)}
+                        </td>
+
+
+                        <td className="py-0 pr-1">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0 text-xs font-extrabold ${r.status === "PAID"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : r.status === "PENDING"
+                                ? "bg-amber-50 text-amber-800"
+                                : "bg-slate-100 text-slate-600"
+                              }`}
+                          >
+                            {r.status}
+                          </span>
+                        </td>
+
+                        <td className="py-2 pr-1 font-semibold text-slate-700">
+                          {r.paidDate ? r.paidDate : "—"}
+                        </td>
+
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              <button className="mt-5 w-full rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-700 active:scale-95 transition">
-                Pay Now
-              </button>
-
-              <p className="mt-3 text-xs text-slate-500">
-                Payments are shown for demo. Connect to fee API later.
-              </p>
             </Card>
           </aside>
+
         </div>
       </div>
 
@@ -408,9 +467,7 @@ export default function StudentDashboard() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-xl font-black text-slate-900">Edit Profile</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  You can update your Name, Phone, and School.
-                </p>
+                <p className="text-sm text-slate-500 mt-1">You can update your Name, Phone, and School.</p>
               </div>
               <button
                 onClick={() => setEditOpen(false)}
@@ -476,7 +533,7 @@ export default function StudentDashboard() {
   );
 }
 
-/* ---------------- UI Helpers ---------------- */
+/* UI Helpers */
 
 function Card({ children }) {
   return <div className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">{children}</div>;
@@ -495,29 +552,6 @@ function InfoRow({ label, value }) {
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs font-bold text-slate-500">{label}</span>
       <span className="text-sm font-extrabold text-slate-900 text-right break-all">{value}</span>
-    </div>
-  );
-}
-
-function StatBox({ title, value, accent }) {
-  const accentMap = {
-    indigo: "text-indigo-700",
-    rose: "text-rose-700",
-    amber: "text-amber-800",
-  };
-
-  return (
-    <div className="rounded-2xl border border-slate-200 p-4">
-      <p className="text-xs font-bold text-slate-500">{title}</p>
-      <p className={`mt-1 text-2xl font-black ${accentMap[accent] || ""}`}>{value}</p>
-    </div>
-  );
-}
-
-function ProgressBar({ value }) {
-  return (
-    <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
     </div>
   );
 }
