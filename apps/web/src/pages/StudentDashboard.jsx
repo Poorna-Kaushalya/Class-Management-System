@@ -1,5 +1,8 @@
+// client/src/pages/StudentDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import logo from "../assets/Landing_Logo_icon.png";
+import AttendanceCalendar from "../Components/AttendanceCalendar";
 
 export default function StudentDashboard() {
   const API = "http://localhost:5000";
@@ -12,9 +15,18 @@ export default function StudentDashboard() {
   // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [schoolName, setSchoolName] = useState("");
 
-  // Demo widgets (replace later with real APIs)
-  const attendance = useMemo(
+  // Calendar state
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth()); // 0-11
+
+  // Data needed by calendar
+  const [timetableDays, setTimetableDays] = useState({}); // { Monday:true }
+  const [attendanceMap, setAttendanceMap] = useState({}); // { "2026-01-18":"PRESENT" }
+
+  const attendanceStats = useMemo(
     () => ({
       present: 18,
       absent: 5,
@@ -45,7 +57,43 @@ export default function StudentDashboard() {
     []
   );
 
-  // ✅ Load student profile from DB
+  function monthKey(y, m) {
+    return `${y}-${String(m + 1).padStart(2, "0")}`; 
+  }
+
+  async function fetchAttendanceForMonth(y, m) {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    const mKey = monthKey(y, m);
+    const res = await axios.get(`${API}/api/attendance/me?month=${mKey}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const records = res.data?.records || [];
+    const map = {};
+    records.forEach((r) => {
+      map[r.date] = r.status;
+    });
+    setAttendanceMap(map);
+  }
+
+  async function fetchTimetableDays() {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    const res = await axios.get(`${API}/api/timetable/my-class`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const tt = res.data?.timetable || res.data || [];
+    const daysObj = {};
+    (tt || []).forEach((row) => {
+      if (row.day) daysObj[row.day] = true; 
+    });
+    setTimetableDays(daysObj);
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
@@ -59,6 +107,7 @@ export default function StudentDashboard() {
         setErr("");
         setLoading(true);
 
+        // 1) profile
         const res = await axios.get(`${API}/api/students/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -66,32 +115,55 @@ export default function StudentDashboard() {
         const u = res.data?.user;
         setUser(u);
         setFullName(u?.fullName || "");
+        setPhone(u?.phone || "");
+        setSchoolName(u?.schoolName || "");
+
+        // 2) timetable days
+        await fetchTimetableDays();
+
+        // 3) attendance for current month
+        await fetchAttendanceForMonth(calYear, calMonth);
       } catch (e) {
         setErr(e.response?.data?.message || "Failed to load profile");
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Update only fullName (student can edit)
-  async function handleSaveName() {
+  // refetch attendance when month changes
+  useEffect(() => {
+    fetchAttendanceForMonth(calYear, calMonth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calYear, calMonth]);
+
+  async function handleSaveProfile() {
     setMsg("");
     setErr("");
 
     const token = localStorage.getItem("accessToken");
     if (!token) return setErr("No access token found. Please login again.");
 
+    if (phone && !/^07\d{8}$/.test(phone)) {
+      return setErr("Enter a valid phone number (ex: 07XXXXXXXX).");
+    }
+
     try {
       const res = await axios.put(
         `${API}/api/students/me`,
-        { fullName },
+        { fullName, phone, schoolName },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const updated = res.data?.user;
       setUser(updated);
-      setMsg("✅ Profile updated");
+
+      setFullName(updated?.fullName || "");
+      setPhone(updated?.phone || "");
+      setSchoolName(updated?.schoolName || "");
+
+      setMsg("✅ Profile updated successfully");
       setEditOpen(false);
     } catch (e) {
       setErr(e.response?.data?.message || "Update failed");
@@ -103,6 +175,26 @@ export default function StudentDashboard() {
     localStorage.removeItem("role");
     localStorage.removeItem("user");
     window.location.href = "/login";
+  }
+
+  function prevMonth() {
+    setCalMonth((m) => {
+      if (m === 0) {
+        setCalYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }
+
+  function nextMonth() {
+    setCalMonth((m) => {
+      if (m === 11) {
+        setCalYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
   }
 
   if (loading) {
@@ -134,23 +226,27 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="max-w-8xl bg-slate-50">
-      {/* Top Header */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
-        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900">
-              Student Dashboard
-            </h1>
-            <p className="text-sm text-slate-500">
-              Welcome back, <span className="font-semibold">{user.fullName}</span>
-            </p>
+    <div className="max-w-8xl bg-slate-50 min-h-screen">
+      {/* NAVBAR */}
+      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200">
+        <div className="mx-auto max-w-8xl px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="Logo" className="h-16 w-auto select-none pointer-events-none" />
+            <div className="text-left">
+              <p className="font-black text-slate-900 leading-tight text-xl">
+                |&nbsp;&nbsp;Student Portal
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-flex rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-bold">
-              {user.role}
-            </span>
+            <div className="hidden sm:block text-right">
+              <p className="text-sm font-extrabold text-slate-900">{user.fullName}</p>
+              <span className="hidden md:inline-flex rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-bold">
+                {user.role}
+              </span>
+            </div>
+
             <button
               onClick={handleLogout}
               className="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-bold hover:bg-slate-800 active:scale-95 transition"
@@ -159,10 +255,10 @@ export default function StudentDashboard() {
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Status messages */}
-      <div className="mx-auto max-w-8xl px-4 pt-4">
+      {/* Status */}
+      <div className="mx-auto max-w-7xl px-4 pt-4">
         {msg && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 font-semibold">
             {msg}
@@ -175,11 +271,11 @@ export default function StudentDashboard() {
         )}
       </div>
 
-      {/* Main Layout: 2 : 6 : 2 */}
-      <div className="mx-auto max-w-7.5xl px-4 py-">
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-          {/* LEFT (2/10) - Student Details */}
-          <aside className="lg:col-span-2 space-y-6">
+      {/* Layout */}
+      <div className="mx-auto max-w-8xl px-4 py-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* LEFT */}
+          <aside className="lg:col-span-3 space-y-6">
             <Card>
               <div className="flex items-center gap-2">
                 <Avatar initials={getInitials(user.fullName)} />
@@ -192,14 +288,17 @@ export default function StudentDashboard() {
               <div className="mt-5 space-y-3">
                 <InfoRow label="Student ID" value={user.studentId || "-"} />
                 <InfoRow label="Class ID" value={user.classId || "Not Assigned"} />
-                <InfoRow label="Joined Date" value={formatDate(user.createdAt)} />
+                <InfoRow label="School" value={user.schoolName || "Not Set"} />
+                <InfoRow label="Phone" value={user.phone || "Not Set"} />
                 <InfoRow label="Email" value={user.email} />
+                <InfoRow label="Joined Date" value={formatDate(user.createdAt)} />
               </div>
 
-              {/* ✅ Student can edit (NO delete) */}
               <button
                 onClick={() => {
                   setFullName(user.fullName || "");
+                  setPhone(user.phone || "");
+                  setSchoolName(user.schoolName || "");
                   setEditOpen(true);
                 }}
                 className="mt-5 w-full rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-700 active:scale-95 transition"
@@ -208,52 +307,22 @@ export default function StudentDashboard() {
               </button>
 
               <p className="mt-3 text-xs text-slate-500">
-                You can edit your <b>name</b> only. Student ID / role cannot be changed.
+                You can edit your <b>Name</b>, <b>Phone</b>, and <b>School</b> only.
               </p>
-            </Card>
-
-            <Card>
-              <h3 className="font-extrabold text-slate-900">Quick Links</h3>
-              <div className="mt-4 space-y-2">
-                <QuickButton label="View Timetable" />
-                <QuickButton label="Download Report" />
-                <QuickButton label="Contact Teacher" />
-              </div>
             </Card>
           </aside>
 
-          {/* CENTER (6/10) */}
-          <main className="lg:col-span-6 space-y-6">
-            <Card>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-black text-slate-900">Attendance</h2>
-                  <p className="text-sm text-slate-500">
-                    Last updated: {attendance.lastUpdated}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-sm text-slate-500">Attendance Rate</p>
-                  <p className="text-2xl font-black text-indigo-700">
-                    {attendance.percentage}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <StatBox title="Present" value={attendance.present} accent="indigo" />
-                <StatBox title="Absent" value={attendance.absent} accent="rose" />
-                <StatBox title="Late" value={attendance.late} accent="amber" />
-              </div>
-
-              <div className="mt-5">
-                <ProgressBar value={attendance.percentage} />
-                <p className="mt-2 text-xs text-slate-500">
-                  Keep your attendance above 85% for better progress tracking.
-                </p>
-              </div>
-            </Card>
+          {/* CENTER */}
+          <main className="lg:col-span-7 space-y-6">
+            {/*  CALENDAR */}
+            <AttendanceCalendar
+              year={calYear}
+              month={calMonth}
+              timetableDays={timetableDays}
+              attendanceMap={attendanceMap}
+              onPrev={prevMonth}
+              onNext={nextMonth}
+            />
 
             <Card>
               <div className="flex items-center justify-between gap-4">
@@ -295,39 +364,9 @@ export default function StudentDashboard() {
                 </table>
               </div>
             </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <h3 className="font-extrabold text-slate-900">Upcoming Class</h3>
-                <p className="mt-1 text-sm text-slate-500">Your next session details</p>
-
-                <div className="mt-4 rounded-2xl border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Topic</p>
-                  <p className="text-base font-extrabold text-slate-900">
-                    Algebra – Quadratic Equations
-                  </p>
-
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <InfoRow label="Day" value="Saturday" />
-                    <InfoRow label="Time" value="11:00AM - 3:00PM" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card>
-                <h3 className="font-extrabold text-slate-900">Announcements</h3>
-                <p className="mt-1 text-sm text-slate-500">Latest updates</p>
-
-                <div className="mt-4 space-y-3">
-                  <Notice text="Model paper discussion on Sunday (1:30PM)." />
-                  <Notice text="Bring your last unit test paper for correction." />
-                  <Notice text="Fee due date is approaching – please check payments." />
-                </div>
-              </Card>
-            </div>
           </main>
 
-          {/* RIGHT (2/10) */}
+          {/* RIGHT */}
           <aside className="lg:col-span-2 space-y-6">
             <Card>
               <h3 className="font-extrabold text-slate-900">Class Fee</h3>
@@ -358,15 +397,6 @@ export default function StudentDashboard() {
                 Payments are shown for demo. Connect to fee API later.
               </p>
             </Card>
-
-            <Card>
-              <h3 className="font-extrabold text-slate-900">More</h3>
-              <div className="mt-4 space-y-2">
-                <MiniStat label="Avg. Marks" value="78%" />
-                <MiniStat label="Completed Units" value="8 / 12" />
-                <MiniStat label="Next Payment" value={fees.dueDate} />
-              </div>
-            </Card>
           </aside>
         </div>
       </div>
@@ -379,7 +409,7 @@ export default function StudentDashboard() {
               <div>
                 <h3 className="text-xl font-black text-slate-900">Edit Profile</h3>
                 <p className="text-sm text-slate-500 mt-1">
-                  You can update your name only.
+                  You can update your Name, Phone, and School.
                 </p>
               </div>
               <button
@@ -391,14 +421,33 @@ export default function StudentDashboard() {
             </div>
 
             <div className="mt-5">
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Full Name
-              </label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
               <input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-600"
                 placeholder="Enter your name"
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-600"
+                placeholder="07XXXXXXXX"
+              />
+              <p className="mt-1 text-xs text-slate-500">Example: 07XXXXXXXX</p>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 mb-2">School Name</label>
+              <input
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-600"
+                placeholder="Enter your school name"
               />
             </div>
 
@@ -410,7 +459,7 @@ export default function StudentDashboard() {
                 Cancel
               </button>
               <button
-                onClick={handleSaveName}
+                onClick={handleSaveProfile}
                 className="w-full rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-700 active:scale-95 transition"
               >
                 Save
@@ -430,11 +479,7 @@ export default function StudentDashboard() {
 /* ---------------- UI Helpers ---------------- */
 
 function Card({ children }) {
-  return (
-    <div className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
-      {children}
-    </div>
-  );
+  return <div className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">{children}</div>;
 }
 
 function Avatar({ initials }) {
@@ -449,34 +494,22 @@ function InfoRow({ label, value }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs font-bold text-slate-500">{label}</span>
-      <span className="text-sm font-extrabold text-slate-900 text-right break-all">
-        {value}
-      </span>
+      <span className="text-sm font-extrabold text-slate-900 text-right break-all">{value}</span>
     </div>
-  );
-}
-
-function QuickButton({ label }) {
-  return (
-    <button className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-bold text-slate-900 hover:bg-slate-100 transition">
-      {label}
-    </button>
   );
 }
 
 function StatBox({ title, value, accent }) {
   const accentMap = {
-    indigo: "bg-indigo-50 text-indigo-700",
-    rose: "bg-rose-50 text-rose-700",
-    amber: "bg-amber-50 text-amber-800",
+    indigo: "text-indigo-700",
+    rose: "text-rose-700",
+    amber: "text-amber-800",
   };
 
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
       <p className="text-xs font-bold text-slate-500">{title}</p>
-      <p className={`mt-1 text-2xl font-black ${accentMap[accent] || ""}`}>
-        {value}
-      </p>
+      <p className={`mt-1 text-2xl font-black ${accentMap[accent] || ""}`}>{value}</p>
     </div>
   );
 }
@@ -484,10 +517,7 @@ function StatBox({ title, value, accent }) {
 function ProgressBar({ value }) {
   return (
     <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-      <div
-        className="h-full bg-indigo-600 rounded-full"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
+      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
     </div>
   );
 }
@@ -500,30 +530,9 @@ function StatusPill({ status }) {
     Weak: "bg-rose-50 text-rose-700",
   };
   return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${
-        map[status] || "bg-slate-100 text-slate-700"
-      }`}
-    >
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${map[status] || "bg-slate-100 text-slate-700"}`}>
       {status}
     </span>
-  );
-}
-
-function Notice({ text }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-sm text-slate-700 font-semibold">{text}</p>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="text-xs font-bold text-slate-500">{label}</span>
-      <span className="text-sm font-extrabold text-slate-900">{value}</span>
-    </div>
   );
 }
 
@@ -538,6 +547,5 @@ function formatDate(iso) {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  // simple readable format
   return d.toISOString().slice(0, 10);
 }

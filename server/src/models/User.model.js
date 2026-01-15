@@ -9,7 +9,10 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["ADMIN", "STUDENT"], default: "STUDENT" },
 
     studentId: { type: String, default: null },
-    classId: { type: mongoose.Schema.Types.ObjectId, ref: "Class", default: null },
+    classId: { type: String, default: null },
+    phone: { type: String, trim: true, default: null },
+    schoolName: { type: String, trim: true, default: null },
+
 
     refreshTokenHash: { type: String, default: null },
   },

@@ -6,7 +6,7 @@ const ROLES = require("../constants/roles");
 // ADMIN: Create Student
 // =============================
 async function createStudent(req, res) {
-  const { fullName, email, password, studentId } = req.body;
+  const { fullName, email, password, studentId, phone, schoolName } = req.body;
 
   const exists = await User.findOne({ email: email.toLowerCase() });
   if (exists) return res.status(409).json({ message: "Email already exists" });
@@ -19,6 +19,10 @@ async function createStudent(req, res) {
     passwordHash,
     role: ROLES.STUDENT,
     studentId,
+
+    // ✅ NEW
+    phone: phone || "",
+    schoolName: schoolName || "",
   });
 
   return res.status(201).json({
@@ -28,6 +32,8 @@ async function createStudent(req, res) {
       fullName: student.fullName,
       email: student.email,
       studentId: student.studentId,
+      phone: student.phone,
+      schoolName: student.schoolName,
     },
   });
 }
@@ -37,7 +43,7 @@ async function createStudent(req, res) {
 // =============================
 async function listStudents(req, res) {
   const students = await User.find({ role: ROLES.STUDENT })
-    .select("fullName email studentId classId createdAt")
+    .select("fullName email studentId classId phone schoolName createdAt")
     .sort({ createdAt: -1 });
 
   return res.json({ students });
@@ -50,32 +56,39 @@ async function getMyProfile(req, res) {
   const userId = req.user?.userId || req.user?.id;
 
   const user = await User.findById(userId).select(
-    "fullName email role studentId classId createdAt"
+    "fullName email role studentId classId phone schoolName createdAt"
   );
 
   if (!user) return res.status(404).json({ message: "User not found" });
   return res.json({ user });
 }
 
-
 // =============================
 // STUDENT: Update own profile (NO delete)
-// Allowed: fullName, password only
+// Allowed: fullName, phone, schoolName, password
 // =============================
 async function updateMyProfile(req, res) {
-  const userId = req.user.userId;
-  const { fullName, password } = req.body;
+  const userId = req.user?.userId || req.user?.id;
+
+  const { fullName, phone, schoolName, password } = req.body;
 
   const updates = {};
-  if (fullName) updates.fullName = fullName;
+
+  if (typeof fullName === "string") updates.fullName = fullName.trim();
+
+  // ✅ NEW
+  if (typeof phone === "string") updates.phone = phone.trim();
+  if (typeof schoolName === "string") updates.schoolName = schoolName.trim();
 
   if (password) {
     updates.passwordHash = await bcrypt.hash(password, 10);
   }
 
   const user = await User.findByIdAndUpdate(userId, updates, { new: true }).select(
-    "fullName email role studentId classId createdAt"
+    "fullName email role studentId classId phone schoolName createdAt"
   );
+
+  if (!user) return res.status(404).json({ message: "User not found" });
 
   return res.json({ message: "Profile updated", user });
 }

@@ -1,10 +1,11 @@
 const router = require("express").Router();
-const Timetable = require("../models/Timetable");
+const Timetable = require("../models/Timetable.model");
 
 const { authRequired } = require("../middlewares/auth.middleware");
 const { adminOnly } = require("../middlewares/admin.middleware");
+const { getMyClassTimetable } = require("../controllers/timetable.controller");
 
-// Public - landing page
+// Public
 router.get("/", async (req, res) => {
   try {
     const items = await Timetable.find().sort({ grade: 1, day: 1 });
@@ -28,7 +29,9 @@ router.post("/", authRequired, adminOnly, async (req, res) => {
 // Admin update
 router.put("/:id", authRequired, adminOnly, async (req, res) => {
   try {
-    const item = await Timetable.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const item = await Timetable.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
     res.json(item);
   } catch {
     res.status(400).json({ message: "Failed to update timetable row" });
@@ -44,5 +47,8 @@ router.delete("/:id", authRequired, adminOnly, async (req, res) => {
     res.status(400).json({ message: "Failed to delete timetable row" });
   }
 });
+
+// Student timetable for their class
+router.get("/my-class", authRequired, getMyClassTimetable);
 
 module.exports = router;
