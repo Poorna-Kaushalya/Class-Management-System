@@ -1,21 +1,23 @@
 // client/src/pages/StudentDashboard.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import logo from "../assets/Landing_Logo_icon.png";
 import AttendanceCalendar from "../Components/AttendanceCalendar";
 import AlgeonLoader from "../Components/AlgeonLoader";
+import MarksMiniChart from "../Components/MarksMiniChart";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
+  "July", "August", "September", "October", "November", "December",
 ];
+
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function StudentDashboard() {
   const API = "http://localhost:5000";
 
   const [user, setUser] = useState(null);
 
-  // loaders
   const [pageLoading, setPageLoading] = useState(true);
   const [monthLoading, setMonthLoading] = useState(false);
 
@@ -30,20 +32,24 @@ export default function StudentDashboard() {
 
   // Calendar state
   const [calYear, setCalYear] = useState(new Date().getFullYear());
-  const [calMonth, setCalMonth] = useState(new Date().getMonth()); // 0-11
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
 
-  // Data needed by calendar
+  // Timetable + attendance
   const [timetableDays, setTimetableDays] = useState({});
+  const [timetableInfo, setTimetableInfo] = useState({});
   const [attendanceMap, setAttendanceMap] = useState({});
 
-  // Fees (Jan–Dec)
+  // Fees
   const [feeYearRecords, setFeeYearRecords] = useState([]);
 
   // Notices
   const [notices, setNotices] = useState([]);
 
+  // Marks
+  const [marks, setMarks] = useState([]);
+
   function monthKey(y, m) {
-    return `${y}-${String(m + 1).padStart(2, "0")}`; // "YYYY-MM"
+    return `${y}-${String(m + 1).padStart(2, "0")}`; // YYYY-MM
   }
 
   function monthLabel(monthStr) {
@@ -51,6 +57,13 @@ export default function StudentDashboard() {
     const [, mm] = monthStr.split("-");
     const idx = Number(mm) - 1;
     return MONTH_NAMES[idx] || monthStr;
+  }
+
+  function ymd(dateObj) {
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateObj.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   }
 
   async function fetchAttendanceForMonth(y, m) {
@@ -78,10 +91,17 @@ export default function StudentDashboard() {
 
     const tt = res.data?.timetable || res.data || [];
     const daysObj = {};
+    const infoObj = {};
+
     (tt || []).forEach((row) => {
-      if (row.day) daysObj[row.day] = true;
+      if (row.day) {
+        daysObj[row.day] = true;
+        infoObj[row.day] = { time: row.time || "", classType: row.classType || "" };
+      }
     });
+
     setTimetableDays(daysObj);
+    setTimetableInfo(infoObj);
   }
 
   async function fetchFeesForYear(y) {
@@ -104,6 +124,17 @@ export default function StudentDashboard() {
     });
 
     setNotices(res.data?.notices || []);
+  }
+
+  async function fetchMyMarksForYear(y) {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    const res = await axios.get(`${API}/api/marks/me?year=${y}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setMarks(res.data?.marks || []);
   }
 
   // First load
@@ -136,6 +167,7 @@ export default function StudentDashboard() {
           fetchAttendanceForMonth(calYear, calMonth),
           fetchFeesForYear(calYear),
           fetchMyNotices(),
+          fetchMyMarksForYear(calYear),
         ]);
       } catch (e) {
         setErr(e.response?.data?.message || "Failed to load dashboard");
@@ -146,7 +178,7 @@ export default function StudentDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When month changes: only attendance needs refetch
+  // Month change -> attendance only
   useEffect(() => {
     if (!user) return;
 
@@ -163,10 +195,11 @@ export default function StudentDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calYear, calMonth, user]);
 
-  // When year changes: refetch fees for year
+  // Year change -> fees + marks
   useEffect(() => {
     if (!user) return;
     fetchFeesForYear(calYear);
+    fetchMyMarksForYear(calYear);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calYear, user]);
 
@@ -202,6 +235,22 @@ export default function StudentDashboard() {
     }
   }
 
+  // auto hide success message after 5s
+  useEffect(() => {
+    if (!msg) return;
+
+    const t = setTimeout(() => setMsg(""), 5000);
+    return () => clearTimeout(t);
+  }, [msg]);
+
+  useEffect(() => {
+    if (!err) return;
+
+    const t = setTimeout(() => setErr(""), 5000);
+    return () => clearTimeout(t);
+  }, [err]);
+
+
   function handleLogout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("role");
@@ -230,6 +279,76 @@ export default function StudentDashboard() {
     });
   }
 
+  function formatDate(iso) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toISOString().slice(0, 10);
+  }
+
+  const todaySummary = useMemo(() => {
+    const now = new Date();
+    const todayKey = ymd(now);
+    const weekdayName = now.toLocaleDateString("en-US", { weekday: "long" });
+
+    const classTodayBool = !!timetableDays[weekdayName];
+    const time = timetableInfo[weekdayName]?.time || "";
+    const classTodayText = classTodayBool ? (time || "Class") : "No Class";
+
+    const todayRecorded = attendanceMap[todayKey];
+    const attendanceStatus = classTodayBool ? (todayRecorded || "PENDING") : "—";
+
+    const y = calYear;
+    const m = calMonth;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+    let have = 0;
+    let present = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(y, m, d);
+      const key = ymd(dt);
+      const dayName = dt.toLocaleDateString("en-US", { weekday: "long" });
+
+      const isTimetableDay = !!timetableDays[dayName];
+      const recorded = attendanceMap[key];
+
+      const isClassDay = isTimetableDay || !!recorded;
+      if (isClassDay) have += 1;
+      if (recorded === "PRESENT") present += 1;
+    }
+
+    const absent = Math.max(0, have - present);
+
+    return {
+      weekdayName,
+      classTodayText,
+      attendanceStatus,
+      have,
+      present,
+      absent,
+    };
+  }, [attendanceMap, timetableDays, timetableInfo, calYear, calMonth]);
+
+  const marksChartData = useMemo(() => {
+    const byMonth = {};
+    (marks || []).forEach((m) => {
+      const mk = m.month;
+      const perc = m.maxMarks ? (Number(m.marks) / Number(m.maxMarks)) * 100 : null;
+      if (!mk || !Number.isFinite(perc)) return;
+      byMonth[mk] = byMonth[mk] || [];
+      byMonth[mk].push(perc);
+    });
+
+    return MONTH_SHORT.map((label, idx) => {
+      const mk = `${calYear}-${String(idx + 1).padStart(2, "0")}`;
+      const arr = byMonth[mk] || [];
+      if (!arr.length) return { label, value: null };
+      const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+      return { label, value: Math.round(avg) };
+    });
+  }, [marks, calYear]);
+
   if (pageLoading) return <AlgeonLoader />;
 
   if (err && !user) {
@@ -252,8 +371,8 @@ export default function StudentDashboard() {
   return (
     <div className="max-w-8xl bg-slate-50 min-h-screen">
       {/* NAVBAR */}
-      <nav className="sticky top-2 z-40 bg-white/90 backdrop-blur border-b border-slate-200">
-        <div className="mx-auto max-w-8xl px-4 py-2 flex items-center justify-between">
+      <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
+        <div className="mx-auto max-w-8xl px-4 py-0 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logo} alt="Logo" className="h-16 w-auto select-none pointer-events-none" />
             <div className="text-left">
@@ -264,7 +383,7 @@ export default function StudentDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
+            <div className="hidden sm:block text-right-sm">
               <p className="text-sm font-extrabold text-slate-900">{user.fullName}</p>
               <span className="hidden md:inline-flex rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-bold">
                 {user.role}
@@ -296,12 +415,11 @@ export default function StudentDashboard() {
       </div>
 
       {/* Layout */}
-      <div className="mx-auto max-w-8xl px-4 py-1">
+      <div className="mx-auto max-w-8xl px-4 -mt-2">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
           {/* LEFT */}
-          <aside className="lg:col-span-2 space-y-6">
-            <Card>
+          <aside className="lg:col-span-2 space-y-2">
+            <Card accent="indigo">
               <div className="flex items-center gap-2">
                 <Avatar initials={getInitials(user.fullName)} />
                 <div>
@@ -310,7 +428,7 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 space-y-2">
                 <InfoRow label="Student ID" value={user.studentId || "-"} />
                 <InfoRow label="Class ID" value={user.classId || "Not Assigned"} />
                 <InfoRow label="School" value={user.schoolName || "Not Set"} />
@@ -326,47 +444,76 @@ export default function StudentDashboard() {
                   setSchoolName(user.schoolName || "");
                   setEditOpen(true);
                 }}
-                className="relative top-3 mb-2 w-1/2 left-12 rounded-lg bg-indigo-500 text-sm py-1 text-white hover:bg-indigo-600 active:scale-95 transition"
+                className="mt-4 w-full rounded-lg bg-indigo-600 text-sm py-2 text-white font-black hover:bg-indigo-700 active:scale-95 transition"
               >
-                Edit
+                Edit Profile
               </button>
+            </Card>
+
+            {/* Special Links */}
+            <Card accent="slate">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                    <IconLink />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-tight">Quick access</h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-2 space-y-2">
+                <LinkCard title="LMS" desc="Study materials" />
+                <LinkCard title="Past Papers" desc="Access  past papers" />
+                <LinkCard title="WhatsApp Group" desc="Important updates" />
+              </div>
             </Card>
           </aside>
 
           {/* CENTER */}
-          <main className="lg:col-span-7 space-y-6">
-
-            {/* NOTICES CARD (FULL WIDTH) */}
-            <Card>
+          <main className="lg:col-span-7 space-y-4">
+            {/* NOTICES */}
+            <Card accent="red">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black text-slate-900">Notices</h2>
-                <span className="text-xs font-bold text-slate-500">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center">
+                    <IconBell />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900 leading-tight">Notices</h2>
+                  </div>
+                </div>
+
+                <span className="text-xs font-extrabold rounded-full bg-slate-100 text-slate-700 px-3 py-1">
                   {user.classId || "Grade"}
                 </span>
               </div>
 
               {notices.length === 0 ? (
-                <div className="mt-3 border border-slate-200 bg-slate-50 p-2 rounded-lg">
-                  <p className="text-sm font-bold text-slate-600">No notices right now.</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 border border-slate-200 bg-slate-50 p-3 rounded-xl">
+                  <p className="text-sm font-black text-slate-700">No notices right now.</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
                     Admin will post important updates for your grade here.
                   </p>
                 </div>
               ) : (
-                <div className="mt-2 space-y-3">
+                <div className="mt-2 space-y-1">
                   {notices.slice(0, 6).map((n) => (
                     <div
                       key={n._id}
-                      className="bg-white p-2 border border-slate-200 border-t-4 border-b-4 border-t-indigo-500 border-b-indigo-500 rounded-lg"
+                      className="relative bg-white p-3 border border-slate-200 rounded-xl overflow-hidden hover:bg-slate-50 transition"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-black text-slate-900">{n.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">
+                      <div className="absolute left-0 top-0 h-full w-1 bg-rose-300" />
+
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-slate-900 truncate">{n.title} </p>
+                          <p className="mt-1 text-[11px] font-bold text-slate-500">
                             {new Date(n.createdAt).toISOString().slice(0, 10)} • {n.grade}
                           </p>
                         </div>
-                        <span className="inline-flex rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-extrabold">
+                        <span className="inline-flex rounded-full bg-orange-100 text-rose-700 px-3 py-1 text-xs font-extrabold">
                           NOTICE
                         </span>
                       </div>
@@ -376,17 +523,15 @@ export default function StudentDashboard() {
               )}
             </Card>
 
-            {/* CALENDAR + SPECIAL LINKS (3:2) */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            {monthLoading && (
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                Loading month data...
+              </div>
+            )}
 
-              {/* LEFT 3/5 - CALENDAR */}
+            {/* Calendar row split 3:2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
               <div className="lg:col-span-3">
-                {monthLoading && (
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-                    Loading month data...
-                  </div>
-                )}
-
                 <AttendanceCalendar
                   year={calYear}
                   month={calMonth}
@@ -397,51 +542,83 @@ export default function StudentDashboard() {
                 />
               </div>
 
-              {/* RIGHT 2/5 - SPECIAL LINKS */}
-              <div className="lg:col-span-2">
-                <Card>
+              <div className="lg:col-span-2 space-y-2 relative -mt-2">
+                {/* Today’s Summary */}
+                <Card accent="indigo">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-lg text-slate-900">Special Links</h3>
-                    <span className="text-xs font-bold text-slate-500">Quick Access</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                        <IconSpark />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-slate-900 leading-tight">Monthly Summary</h3>
+                      </div>
+                    </div>
+
+                    <span className="text-xs font-bold text-slate-500">{todaySummary.weekdayName}</span>
                   </div>
 
-                  <div className="mt-4 space-y-3">
-                    <SpecialLink
-                      title="LMS / Online Classes"
-                      desc="Join online sessions and materials"
-                      href="#"
-                    />
-                    <SpecialLink
-                      title="Past Papers"
-                      desc="Access grade-wise past papers"
-                      href="#"
-                    />
-                    <SpecialLink
-                      title="WhatsApp Group"
-                      desc="Announcements and important updates"
-                      href="#"
-                    />
-                    <SpecialLink
-                      title="Institute Location"
-                      desc="Find institute location quickly"
-                      href="#"
-                    />
+                  <div className="mt-3 space-y-2">
+                    <Row label="Class Today" value={todaySummary.classTodayText} />
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-500">Attendance Status</span>
+                      <StatusBadge status={todaySummary.attendanceStatus} />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <StatBox label="Have" value={todaySummary.have} />
+                      <StatBox label="Present" value={todaySummary.present} />
+                      <StatBox label="Absent" value={todaySummary.absent} />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Marks */}
+                <Card accent="emerald">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                        <IconChart />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-slate-900 leading-tight">Marks</h3>
+                      </div>
+                    </div>
+
+                    <span className="text-xs font-extrabold rounded-full bg-slate-100 text-slate-700 px-3 py-1">
+                      {calYear}
+                    </span>
+                  </div>
+
+                  <div className="mt-2">
+                    <MarksMiniChart data={marksChartData} height={120} />
                   </div>
                 </Card>
               </div>
-
             </div>
           </main>
 
           {/* RIGHT */}
-          <aside className="lg:col-span-3 space-y-6">
-            <Card>
+          <aside className="lg:col-span-3 space-y-4">
+            <Card accent="amber">
               <div className="flex items-center justify-between">
-                <h3 className="font-extrabold text-lg text-slate-900">Class Fees</h3>
-                <span className="text-xs font-bold text-slate-500">{calYear}</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center">
+                    <IconCalendar />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg text-slate-900 leading-tight">Class Fees</h3>
+                    <p className="text-xs font-bold text-slate-500">Payment status</p>
+                  </div>
+                </div>
+
+                <span className="text-xs font-extrabold rounded-full bg-slate-100 text-slate-700 px-3 py-1">
+                  {calYear}
+                </span>
               </div>
 
-              <div className="mt-4 overflow-x-auto">
+              <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-slate-500 border-b">
@@ -453,26 +630,25 @@ export default function StudentDashboard() {
 
                   <tbody>
                     {feeYearRecords.map((r) => (
-                      <tr key={r.month} className="border-b last:border-b-0">
-                        <td className="py-2 pr-2 font-bold text-slate-900">
+                      <tr key={r.month} className="border-b last:border-b-0 border-gray-300">
+                        <td className="py-1.5 pr-2 font-black text-slate-900">
                           {monthLabel(r.month)}
                         </td>
 
-                        <td className="py-2 pr-1">
+                        <td className="py-1.5 pr-1">
                           <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-extrabold ${
-                              r.status === "PAID"
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-extrabold ${r.status === "PAID"
                                 ? "bg-emerald-50 text-emerald-700"
                                 : r.status === "PENDING"
-                                ? "bg-amber-50 text-amber-800"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
+                                  ? "bg-amber-50 text-amber-800"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
                           >
                             {r.status}
                           </span>
                         </td>
 
-                        <td className="py-2 pr-1 font-semibold text-slate-700">
+                        <td className="py-1.5 pr-1 font-semibold text-slate-700">
                           {r.paidDate ? r.paidDate : "—"}
                         </td>
                       </tr>
@@ -484,6 +660,8 @@ export default function StudentDashboard() {
           </aside>
         </div>
       </div>
+
+
 
       {/* Edit Modal */}
       {editOpen && (
@@ -560,26 +738,30 @@ export default function StudentDashboard() {
   );
 }
 
-/* UI Helpers */
-function Card({ children }) {
+/* =========================
+   UI Helpers
+   ========================= */
+
+function Card({ children, accent = "indigo" }) {
+  const accentMap = {
+    indigo: "border-t-indigo-500",
+    red: "border-t-rose-400",
+    amber: "border-t-amber-400",
+    emerald: "border-t-emerald-500",
+    slate: "border-t-slate-300",
+  };
+
   return (
-    <div className="rounded-xl bg-white border border-slate-200 p-4 shadow-sm">
+    <div
+      className={`
+        rounded-2xl bg-white border border-slate-200 shadow-sm
+        border-t-4 ${accentMap[accent] || accentMap.indigo}
+        hover:shadow-md transition
+        p-4
+      `}
+    >
       {children}
     </div>
-  );
-}
-
-function SpecialLink({ title, desc, href }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="block rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 hover:bg-slate-100 transition"
-    >
-      <p className="text-sm font-extrabold text-slate-900">{title}</p>
-      <p className="text-xs text-slate-500 mt-1">{desc}</p>
-    </a>
   );
 }
 
@@ -595,9 +777,61 @@ function InfoRow({ label, value }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm font-bold text-slate-500">{label}</span>
-      <span className="text-sm font-extrabold text-slate-900 text-right break-all">
-        {value}
-      </span>
+      <span className="text-sm font-extrabold text-slate-900 text-right break-all">{value}</span>
+    </div>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-bold text-slate-500">{label}</span>
+      <span className="text-sm font-extrabold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+function StatBox({ label, value }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+      <p className="text-xs font-bold text-slate-500">{label}</p>
+      <p className="text-lg font-black text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    PRESENT: "bg-emerald-50 text-emerald-700",
+    ABSENT: "bg-rose-50 text-rose-700",
+    LATE: "bg-amber-50 text-amber-800",
+    EXCUSED: "bg-sky-50 text-sky-700",
+    PENDING: "bg-slate-100 text-slate-700",
+    "—": "bg-slate-100 text-slate-700",
+  };
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${map[status] || "bg-slate-100 text-slate-700"
+        }`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function LinkCard({ title, desc }) {
+  return (
+    <div className="group rounded-xl border border-slate-200 bg-white p-3 hover:shadow-sm transition cursor-pointer">
+      <div className="flex items-start gap-3">
+        <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:bg-indigo-50 group-hover:text-indigo-700 transition">
+          <IconLink />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-black text-slate-900">{title}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">{desc}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -609,9 +843,71 @@ function getInitials(name = "") {
   return (first + last).toUpperCase();
 }
 
-function formatDate(iso) {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toISOString().slice(0, 10);
+/* =========================
+   Icons (inline SVG)
+   ========================= */
+
+function IconBell({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 22a2.2 2.2 0 0 0 2.2-2.2H9.8A2.2 2.2 0 0 0 12 22Z"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+      />
+      <path
+        d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7Z"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconCalendar({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path d="M7 3v3M17 3v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M4 9h16M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconSpark({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 2l1.6 6.1L20 10l-6.4 1.9L12 18l-1.6-6.1L4 10l6.4-1.9L12 2Z"
+        stroke="currentColor" strokeWidth="2" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconChart({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path d="M4 19V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M4 19h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M8 16V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 16V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M16 16V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconLink({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+      <path
+        d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
 }

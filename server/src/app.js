@@ -8,6 +8,7 @@ const timetableRoutes = require("./routes/timetable.routes");
 const attendanceRoutes = require("./routes/attendance.routes");
 const feeRoutes = require("./routes/fees.routes");
 const noticeRoutes = require("./routes/notices.routes");
+const marksRoutes = require("./routes/marks.routes");
 
 const app = express();
 
@@ -27,5 +28,7 @@ app.use("/api/timetable", timetableRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/fees", feeRoutes);
 app.use("/api/notices", noticeRoutes);
+app.use("/api/marks", marksRoutes);
+
 
 module.exports = app;

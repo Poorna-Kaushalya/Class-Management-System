@@ -58,11 +58,11 @@ export default function AttendanceCalendar({
   }, [year, month]);
 
   const letterMap = {
-    PRESENT: "P",
-    ABSENT: "A",
-    LATE: "L",
-    EXCUSED: "E",
-    PENDING: "•",
+    PRESENT: "Present",
+    ABSENT: "Absent",
+    LATE: "Late",
+    EXCUSED: "Extra",
+    PENDING: "Pending",
   };
 
   function cellStyle(status, inMonth) {
@@ -92,12 +92,12 @@ export default function AttendanceCalendar({
   }
 
   return (
-    <div className="rounded-2xl bg-white border border-slate-200 px-3 py-3 shadow-sm relative -mt-3">
+    <div className="rounded-2xl bg-white border border-slate-200 px-3 py-3 shadow-sm relative -mt-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-black text-slate-900">Attendance Calendar</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">
+          <p className="text-[11px] text-slate-500 mt-1">
             {MONTH_NAMES[month]} {year}
           </p>
         </div>
@@ -119,7 +119,7 @@ export default function AttendanceCalendar({
       </div>
 
       {/* Week labels + Cells */}
-      <div className="mt-2 grid grid-cols-7 gap-0.75">
+      <div className="mt-2 grid grid-cols-7 gap-1">
         {WEEKDAYS.map((w) => (
           <div key={w} className="text-[10px] font-extrabold text-slate-500 text-center">
             {w}
@@ -140,7 +140,7 @@ export default function AttendanceCalendar({
           return (
             <div
               key={idx}
-              className={`rounded-md border px-1 py-1 ${cellStyle(status, c.inMonth)} min-h-10.5`}
+              className={`rounded-md border px-1 py-1 ${cellStyle(status, c.inMonth)} min-h-11`}
             >
               <div className="flex items-start justify-between">
                 <span className={`text-[10px] font-black ${c.inMonth ? "text-slate-900" : "text-slate-400"}`}>
@@ -159,32 +159,13 @@ export default function AttendanceCalendar({
                   <p className="text-[9px] text-slate-400 font-semibold leading-tight">No class</p>
                 ) : (
                   <p className="text-[9px] text-slate-600 font-semibold leading-tight">
-                    {isTimetableClassDay ? "Class" : "Extra"}
+                    {isTimetableClassDay ? "Class" : "Extra Class"}
                   </p>
                 )}
               </div>
             </div>
           );
         })}
-      </div>
-
-      {/* Legend */}
-      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-extrabold text-slate-600">
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" /> Present
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-rose-400" /> Absent
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-amber-400" /> Late
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-sky-400" /> Extra
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-slate-300" /> Pending
-        </span>
       </div>
     </div>
   );
