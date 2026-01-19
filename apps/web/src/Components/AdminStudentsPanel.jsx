@@ -12,7 +12,7 @@ const CREATE_STUDENT_API = "http://localhost:5000/api/students";
 // admin routes
 const ADMIN_STUDENTS_API = "http://localhost:5000/api/admin/students";
 
-// ✅ helper: sort ST0601, ST0602... ST1001... correctly
+//  helper: sort ST0601, ST0602... ST1001... correctly
 function getStudentIdNumber(studentId = "") {
   const digits = String(studentId).replace(/\D/g, "");
   return digits ? Number(digits) : Number.MAX_SAFE_INTEGER;
