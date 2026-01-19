@@ -6,7 +6,7 @@ const ROLES = require("../constants/roles");
 // ADMIN: Create Student
 // =============================
 async function createStudent(req, res) {
-  const { fullName, email, password, studentId, phone, schoolName } = req.body;
+  const { fullName, email, password, studentId, classId, phone, schoolName } = req.body;
 
   const exists = await User.findOne({ email: email.toLowerCase() });
   if (exists) return res.status(409).json({ message: "Email already exists" });
@@ -19,8 +19,7 @@ async function createStudent(req, res) {
     passwordHash,
     role: ROLES.STUDENT,
     studentId,
-
-    // ✅ NEW
+    classId,
     phone: phone || "",
     schoolName: schoolName || "",
   });
@@ -32,6 +31,7 @@ async function createStudent(req, res) {
       fullName: student.fullName,
       email: student.email,
       studentId: student.studentId,
+      classId: student.classId,
       phone: student.phone,
       schoolName: student.schoolName,
     },
@@ -76,7 +76,7 @@ async function updateMyProfile(req, res) {
 
   if (typeof fullName === "string") updates.fullName = fullName.trim();
 
-  // ✅ NEW
+  //  NEW
   if (typeof phone === "string") updates.phone = phone.trim();
   if (typeof schoolName === "string") updates.schoolName = schoolName.trim();
 
@@ -93,9 +93,39 @@ async function updateMyProfile(req, res) {
   return res.json({ message: "Profile updated", user });
 }
 
+async function bulkCreateStudents(req, res) {
+  try {
+    const { students = [] } = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ message: "students array is required" });
+    }
+
+    const passwordHash = await bcrypt.hash("12345678", 10);
+
+    const docs = students.map((s) => ({
+      fullName: s.fullName,
+      email: String(s.email).toLowerCase(),
+      passwordHash,
+      role: ROLES.STUDENT,
+      studentId: s.studentId,
+      classId: s.classId,
+      phone: s.phone || "",
+      schoolName: s.schoolName || "Subashie R.M.V",
+    }));
+
+    const created = await User.insertMany(docs, { ordered: false });
+    return res.status(201).json({ message: "Bulk students created", count: created.length });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json({ message: "Bulk insert failed", error: String(e?.message || e) });
+  }
+}
+
+
 module.exports = {
   createStudent,
   listStudents,
   getMyProfile,
   updateMyProfile,
+  bulkCreateStudents,
 };

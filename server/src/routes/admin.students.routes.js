@@ -9,6 +9,7 @@ router.get("/", authRequired, allowRoles("ADMIN"), c.adminListStudents);
 
 // dashboard bundle
 router.get("/:studentUserId/dashboard", authRequired, allowRoles("ADMIN"), c.adminGetStudentDashboard);
+router.delete("/:studentUserId", authRequired, allowRoles("ADMIN"), c.adminDeleteStudent);
 
 // profile update
 router.put("/:studentUserId/profile", authRequired, allowRoles("ADMIN"), c.adminUpdateStudentProfile);

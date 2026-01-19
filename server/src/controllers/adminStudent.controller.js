@@ -50,6 +50,30 @@ exports.createStudent = async (req, res) => {
   }
 };
 
+exports.adminDeleteStudent = async (req, res) => {
+  try {
+    const { studentUserId } = req.params;
+
+    const student = await User.findById(studentUserId).select("studentId");
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    // delete related records
+    if (student.studentId) {
+      await Attendance.deleteMany({ studentId: student.studentId });
+      await Fee.deleteMany({ studentId: student.studentId });
+    }
+    await Mark.deleteMany({ student: studentUserId });
+
+    await User.findByIdAndDelete(studentUserId);
+
+    res.json({ ok: true, message: "Student deleted" });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json({ message: "Failed to delete student" });
+  }
+};
+
+
 /* -------------------- Students List/Search -------------------- */
 exports.adminListStudents = async (req, res) => {
   try {

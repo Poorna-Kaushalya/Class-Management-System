@@ -92,12 +92,12 @@ export default function AttendanceCalendar({
   }
 
   return (
-    <div className="rounded-2xl bg-white border border-slate-200 px-3 py-3 shadow-sm relative -mt-2">
+    <div className="rounded-2xl bg-white border border-slate-200 px-3 py-2 shadow-sm relative -mt-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-black text-slate-900">Attendance Calendar</h3>
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-[11px] font-extrabold text-slate-500 mt-0 ">
             {MONTH_NAMES[month]} {year}
           </p>
         </div>
@@ -119,7 +119,7 @@ export default function AttendanceCalendar({
       </div>
 
       {/* Week labels + Cells */}
-      <div className="mt-2 grid grid-cols-7 gap-1">
+      <div className="mt-2 grid grid-cols-7 gap-w-1 gap-y-2">
         {WEEKDAYS.map((w) => (
           <div key={w} className="text-[10px] font-extrabold text-slate-500 text-center">
             {w}
@@ -166,6 +166,13 @@ export default function AttendanceCalendar({
             </div>
           );
         })}
+      </div>
+
+      {/*  Footer text to fill space */}
+      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1">
+        <p className="text-[10px] font-semibold text-slate-500 ">
+          <center>Attendance is updated automatically when the admin marks daily attendance.</center>
+        </p>
       </div>
     </div>
   );

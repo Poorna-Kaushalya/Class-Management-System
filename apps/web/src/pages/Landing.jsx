@@ -1,9 +1,3 @@
-// src/pages/Landing.jsx (COMPLETE UPDATED FILE)
-// ✅ Timetable loads from MongoDB via GET /api/timetable
-// ✅ Removed hardcoded timetable array
-// ✅ Keeps your existing design 100%
-// ✅ Shows loading + error + empty state nicely
-// ✅ Sorts timetable as Grade 6 -> Grade 11 (NOT alphabetical)
 
 import { useEffect, useState } from "react";
 import {

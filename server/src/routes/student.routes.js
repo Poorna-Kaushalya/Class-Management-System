@@ -7,6 +7,7 @@ const {
   listStudents,
   getMyProfile,
   updateMyProfile,
+  bulkCreateStudents,
 } = require("../controllers/student.controller");
 
 const {
@@ -49,5 +50,9 @@ router.post(
 
 // Admin/Teacher can view students
 router.get("/", authRequired, allowRoles(ROLES.ADMIN, ROLES.TEACHER), listStudents);
+
+// Admin: Bulk create students
+router.post("/bulk", authRequired, allowRoles(ROLES.ADMIN), bulkCreateStudents);
+
 
 module.exports = router;

@@ -26,11 +26,6 @@ export default function AdminDashboard() {
         {activeTab === "Timetable" && <AdminTimetableEditor />}
         {activeTab === "Students" && <AdminStudentsPanel />}
 
-        {activeTab === "Students" && (
-          <div className="bg-white rounded-2xl p-8 text-slate-500 font-semibold">
-            Student management module coming soon 
-          </div>
-        )}
       </div>
     </div>
   );
