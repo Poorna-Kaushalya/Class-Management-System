@@ -14,9 +14,8 @@ import {
   Linkedin,
 } from "lucide-react";
 
-import LoginForm from "../components/LoginForm";
+import LoginForm from "../components/LoginForm.jsx";
 
-// ✅ API (make sure this file exists: src/services/timetableApi.js)
 import { fetchTimetable } from "../services/timetableApi";
 
 import Man from "../Assets/Man.png";
