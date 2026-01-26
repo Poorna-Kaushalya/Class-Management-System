@@ -1,7 +1,7 @@
 // client/src/pages/StudentDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import logo from "../assets/Landing_Logo_icon.png";
+import logo from "../Assets/Landing_Logo_icon.png";
 import AttendanceCalendar from "../Components/AttendanceCalendar";
 import AlgeonLoader from "../Components/AlgeonLoader";
 import MarksMiniChart from "../Components/MarksMiniChart";
