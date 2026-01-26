@@ -1,4 +1,4 @@
-name: NodeJS with Webpack
+name: NodeJS with Vite
 
 on:
   push:
@@ -22,7 +22,10 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    - name: Build
-      run: |
-        npm install
-        npx webpack
+    - name: Install dependencies
+      working-directory: web
+      run: npm install
+
+    - name: Build with Vite
+      working-directory: web
+      run: npm run build
