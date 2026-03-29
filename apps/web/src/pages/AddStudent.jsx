@@ -37,7 +37,7 @@ export default function AddStudent() {
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           <Input label="Full Name" value={form.fullName} onChange={(v)=>update("fullName", v)} />
-          <Input label="Email" value={form.email} onChange={(v)=>update("email", v)} />
+          <Input label="Email" value={form.emails} onChange={(v)=>update("email", v)} />
           <Input label="Temporary Password" type="password" value={form.password} onChange={(v)=>update("password", v)} />
           <Input label="Student ID" value={form.studentId} onChange={(v)=>update("studentId", v)} />
 
