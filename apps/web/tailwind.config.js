@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       keyframes: {
-        algeonLogo: {
+        lumoraLogo: {
           "0%": { opacity: "0", transform: "scale(0.9)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
@@ -15,7 +15,7 @@ export default {
         },
       },
       animation: {
-        algeonLogo: "algeonLogo 1.2s ease-out forwards",
+        lumoraLogo: "lumoraLogo 1.2s ease-out forwards",
         loadingMove: "loadingMove 1.2s linear infinite",
       },
     },

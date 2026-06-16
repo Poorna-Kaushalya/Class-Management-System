@@ -5,7 +5,7 @@ import { Plus, Trash2, PencilLine, Save } from "lucide-react";
 
 import AttendanceCalendar from "../Components/AttendanceCalendar";
 import MarksMiniChart from "../Components/MarksMiniChart";
-import AlgeonLoader from "../Components/AlgeonLoader";
+import LumoraLoader from "../Components/LumoraLoader";
 
 import {
   adminFetchStudentDashboard,
@@ -354,7 +354,7 @@ export default function AdminStudentDashboard() {
 
   // ------------------ UI ------------------
 
-  if (pageLoading) return <AlgeonLoader />;
+  if (pageLoading) return <LumoraLoader />;
 
   return (
     <div className="min-h-screen bg-slate-50">

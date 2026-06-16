@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import logo from "../Assets/Landing_Logo_icon.png";
 import AttendanceCalendar from "../Components/AttendanceCalendar";
-import AlgeonLoader from "../Components/AlgeonLoader";
+import LumoraLoader from "../Components/LumoraLoader";
 import MarksMiniChart from "../Components/MarksMiniChart";
 
 const MONTH_NAMES = [
@@ -349,7 +349,7 @@ export default function StudentDashboard() {
     });
   }, [marks, calYear]);
 
-  if (pageLoading) return <AlgeonLoader />;
+  if (pageLoading) return <LumoraLoader />;
 
   if (err && !user) {
     return (

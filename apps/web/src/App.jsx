@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import LandingPage from "./pages/Landing";
-import AlgeonLoader from "./Components/AlgeonLoader";
+import LumoraLoader from "./Components/LumoraLoader";
 import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminStudentDashboard from "./pages/AdminStudentDashboard";
@@ -24,7 +24,7 @@ function App() {
 
   return (
     <>
-      {loading && <AlgeonLoader />}
+      {loading && <LumoraLoader />}
 
       {!loading && (
         <BrowserRouter>
