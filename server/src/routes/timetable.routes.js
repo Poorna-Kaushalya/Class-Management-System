@@ -3,42 +3,83 @@ const Timetable = require("../models/Timetable.model");
 
 const { authRequired } = require("../middlewares/auth.middleware");
 const { adminOnly } = require("../middlewares/admin.middleware");
-const { getMyClassTimetable } = require("../controllers/timetable.controller");
+const {
+  getMyClassTimetable,
+} = require("../controllers/timetable.controller");
 
-// Public
+// Day order for sorting
+const dayOrder = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 7,
+};
+
+//  PUBLIC - get timetable (with subject filter)
 router.get("/", async (req, res) => {
   try {
-    const items = await Timetable.find().sort({ grade: 1, day: 1 });
+    const { subject } = req.query;
+
+    let filter = {};
+
+    if (subject) {
+      filter.subject = { $regex: new RegExp(`^${subject}$`, "i") };
+    }
+
+    let items = await Timetable.find(filter).lean();
+
+    //  correct sorting
+    items.sort((a, b) => {
+      if (dayOrder[a.day] !== dayOrder[b.day]) {
+        return dayOrder[a.day] - dayOrder[b.day];
+      }
+      return a.time.localeCompare(b.time);
+    });
+
     res.json(items);
   } catch {
     res.status(500).json({ message: "Failed to load timetable" });
   }
 });
 
-// Admin create
+//  ADMIN CREATE
 router.post("/", authRequired, adminOnly, async (req, res) => {
   try {
-    const { grade, day, time, classType } = req.body;
-    const item = await Timetable.create({ grade, day, time, classType });
+    const { grade, subject, day, time, classType } = req.body;
+
+    const item = await Timetable.create({
+      grade,
+      subject,
+      day,
+      time,
+      classType,
+    });
+
     res.json(item);
   } catch {
     res.status(400).json({ message: "Failed to create timetable row" });
   }
 });
 
-// Admin update
+//  ADMIN UPDATE
 router.put("/:id", authRequired, adminOnly, async (req, res) => {
   try {
-    const item = await Timetable.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const item = await Timetable.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
     res.json(item);
   } catch {
     res.status(400).json({ message: "Failed to update timetable row" });
   }
 });
 
-// Admin delete
+//  ADMIN DELETE
 router.delete("/:id", authRequired, adminOnly, async (req, res) => {
   try {
     await Timetable.findByIdAndDelete(req.params.id);
@@ -48,7 +89,7 @@ router.delete("/:id", authRequired, adminOnly, async (req, res) => {
   }
 });
 
-// Student timetable for their class
+//  STUDENT TIMETABLE
 router.get("/my-class", authRequired, getMyClassTimetable);
 
 module.exports = router;

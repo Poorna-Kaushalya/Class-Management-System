@@ -6,6 +6,17 @@ import {
   deleteTimetableRow,
 } from "../services/timetableApi";
 
+const SUBJECTS = [
+  "Mathematics",
+  "Science",
+  "English",
+  "History",
+  "Geography",
+  "ICT",
+  "Commerce",
+  "Civics",
+];
+
 export default function AdminTimetableEditor() {
   const GRADES = useMemo(
     () => ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11"],
@@ -33,9 +44,11 @@ export default function AdminTimetableEditor() {
 
   const [rows, setRows] = useState([]);
   const [busyId, setBusyId] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState("Mathematics");
 
   const [form, setForm] = useState({
     grade: "Grade 6",
+    subject: "Mathematics",
     day: "Thursday",
     time: "",
     classType: "Theory & Paper",
@@ -67,20 +80,29 @@ export default function AdminTimetableEditor() {
     });
   }
 
-  async function load() {
-    const data = await fetchTimetable();
+  async function load(subject = selectedSubject) {
+    const data = await fetchTimetable(subject);
     setRows(sortRows(data));
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    load(selectedSubject);
+  }, [selectedSubject]);
 
   async function addRow(e) {
     e.preventDefault();
+
     await createTimetableRow(form);
-    setForm({ grade: "Grade 6", day: "Thursday", time: "", classType: "Theory & Paper" });
-    load();
+
+    setForm({
+      grade: "Grade 6",
+      subject: selectedSubject,
+      day: "Thursday",
+      time: "",
+      classType: "Theory & Paper",
+    });
+
+    load(selectedSubject);
   }
 
   async function update(id, patch) {
@@ -109,23 +131,84 @@ export default function AdminTimetableEditor() {
   const inputClass =
     "w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-600";
   const selectClass =
-    "w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-600 bg-white";
+    "w-full border border-slate-300 rounded-lg px-2 py-1 text-sm font-semibold outline-none focus:border-indigo-600 bg-white";
   const btnPrimary =
-    "bg-indigo-600 text-white rounded-xl font-black text-sm px-4 py-2 hover:bg-indigo-700 active:scale-95 transition";
+    "bg-indigo-600 text-white rounded-lg font-black text-sm px-2 py-2 hover:bg-indigo-700 active:scale-95 transition";
   const btnDanger =
-    "bg-red-600 text-white rounded-xl font-black text-sm px-4 py-2 hover:bg-red-700 active:scale-95 transition";
+    "bg-red-600 text-white rounded-lg font-black text-sm px-2 py-1.5 hover:bg-red-700 active:scale-95 transition";
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 relative -mt-7">
-      <h1 className="text-2xl md:text-3xl font-black text-indigo-700 tracking-tight">
-        Class Timetable
-      </h1><br/>
+
+      <div className="w-full mb-6">
+
+        {/* HEADING */}
+        <div className="mb-3 text-center">
+          <h2 className="text-xl md:text-2xl font-black text-slate-800">
+            Select <span className="text-indigo-600">Subject</span>
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Choose a subject to filter timetable
+          </p>
+        </div>
+
+        {/* SUBJECT CARDS */}
+        <div className="flex flex-wrap gap-3 w-full justify-center">
+          {SUBJECTS.map((subject) => {
+
+            const colors = {
+              Mathematics: "bg-blue-100 text-blue-700 border-blue-300",
+              Science: "bg-green-100 text-green-700 border-green-300",
+              English: "bg-purple-100 text-purple-700 border-purple-300",
+              History: "bg-amber-100 text-amber-700 border-amber-300",
+              Geography: "bg-cyan-100 text-cyan-700 border-cyan-300",
+              ICT: "bg-indigo-100 text-indigo-700 border-indigo-300",
+              Commerce: "bg-pink-100 text-pink-700 border-pink-300",
+              Civics: "bg-slate-100 text-slate-700 border-slate-300",
+            };
+
+            const active =
+              selectedSubject === subject
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                : colors[subject] || "bg-white text-slate-700 border-slate-300";
+
+            return (
+              <button
+                key={subject}
+                onClick={() => setSelectedSubject(subject)}
+                className={`
+            w-34 h-10 flex items-center justify-center
+            rounded-xl border font-bold text-sm transition
+            hover:scale-105 active:scale-95 mb-2
+            ${active}
+          `}
+              >
+                {subject}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* BOTTOM HR */}
+        <hr className="border-slate-600 mt-2" />
+
+      </div>
 
       {/* Add Row */}
       <form
         onSubmit={addRow}
-        className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5"
+        className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-2"
       >
+        <select
+          className={selectClass}
+          value={form.subject}
+          onChange={(e) => setForm({ ...form, subject: e.target.value })}
+        >
+          {SUBJECTS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
         <select
           className={selectClass}
           value={form.grade}
@@ -152,7 +235,7 @@ export default function AdminTimetableEditor() {
 
         <input
           className={inputClass}
-          placeholder="Time (e.g., 4:00 PM – 6:00 PM)"
+          placeholder="Time (4:00 PM – 6:00 PM)"
           value={form.time}
           onChange={(e) => setForm({ ...form, time: e.target.value })}
           required
@@ -170,27 +253,30 @@ export default function AdminTimetableEditor() {
           ))}
         </select>
 
-        <button className={btnPrimary}>Add</button>
+        <button className={btnPrimary}>Add Timetable Entry</button>
       </form>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-indigo-600 text-white">
             <tr>
-              <th className="px-4 py-3 text-left font-black uppercase tracking-wide text-xs">
+              <th className="px-4 py-2 text-left font-black uppercase tracking-wide text-xs">
                 Grade
               </th>
-              <th className="px-4 py-3 text-left font-black uppercase tracking-wide text-xs">
+              <th className="px-4 py-2 text-left text-xs font-black uppercase">
+                Subject
+              </th>
+              <th className="px-4 py-2 text-left font-black uppercase tracking-wide text-xs">
                 Day
               </th>
-              <th className="px-4 py-3 text-left font-black uppercase tracking-wide text-xs">
+              <th className="px-4 py-2 text-left font-black uppercase tracking-wide text-xs">
                 Time
               </th>
-              <th className="px-4 py-3 text-left font-black uppercase tracking-wide text-xs">
+              <th className="px-4 py-2 text-left font-black uppercase tracking-wide text-xs">
                 Type
               </th>
-              <th className="px-4 py-3 text-center font-black uppercase tracking-wide text-xs">
+              <th className="px-4 py-2 text-center font-black uppercase tracking-wide text-xs">
                 Action
               </th>
             </tr>
@@ -199,7 +285,7 @@ export default function AdminTimetableEditor() {
           <tbody>
             {rows.map((r) => (
               <tr key={r._id} className="border-t">
-                <td className="px-4 py-3">
+                <td className="px-4 py-1.5">
                   <select
                     className={selectClass}
                     value={r.grade}
@@ -214,7 +300,19 @@ export default function AdminTimetableEditor() {
                   </select>
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="px-4 py-1.5">
+                  <select
+                    className={selectClass}
+                    value={r.subject}
+                    onChange={(e) => update(r._id, { subject: e.target.value })}
+                  >
+                    {SUBJECTS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </td>
+
+                <td className="px-4 py-1.5">
                   <select
                     className={selectClass}
                     value={r.day}
@@ -229,7 +327,7 @@ export default function AdminTimetableEditor() {
                   </select>
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="px-4 py-1.5">
                   <input
                     value={r.time}
                     disabled={busyId === r._id}
@@ -247,7 +345,7 @@ export default function AdminTimetableEditor() {
                   />
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="px-4 py-1.5">
                   <select
                     className={selectClass}
                     value={r.classType || "Theory & Paper"}
@@ -262,7 +360,7 @@ export default function AdminTimetableEditor() {
                   </select>
                 </td>
 
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-1.5 text-center">
                   <button onClick={() => remove(r._id)} className={btnDanger}>
                     Delete
                   </button>

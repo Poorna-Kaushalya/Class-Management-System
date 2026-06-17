@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
-import { Mail, Lock, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Mail, Lock, X, Eye, EyeOff } from "lucide-react";
 
 export default function LoginForm({
   title = "Login",
@@ -14,6 +14,7 @@ export default function LoginForm({
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -28,23 +29,23 @@ export default function LoginForm({
 
       const { accessToken, user } = res.data;
 
-      // ✅ store token + user (recommended)
+      //  store token + user (recommended)
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", user.role);
 
-      setMsg("✅ Login successful");
+      setMsg(" Login successful");
 
-      // ✅ Role-based navigation
+      //  Role-based navigation
       if (user.role === "ADMIN") {
         navigate("/admin");
       } else if (user.role === "STUDENT") {
         navigate("/student");
       } else {
-        setMsg("⚠️ Your account role is not supported");
+        setMsg(" Your account role is not supported");
       }
     } catch (err) {
-      setMsg(err.response?.data?.message || "❌ Invalid email or password");
+      setMsg(err.response?.data?.message || " Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -78,7 +79,7 @@ export default function LoginForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full outline-none text-sm text-slate-700"
-              placeholder="admin@cms.com"
+              placeholder="user@gmail.com"
               required
             />
           </div>
@@ -88,16 +89,29 @@ export default function LoginForm({
           <label className="block text-sm font-semibold text-slate-700 mb-2">
             Password
           </label>
+
           <div className="flex items-center gap-3 rounded-xl border border-slate-300 px-4 py-3 focus-within:border-indigo-600 transition">
+
             <Lock size={18} className="text-slate-400" />
+
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full outline-none text-sm text-slate-700"
               placeholder="••••••••"
               required
             />
+
+            {/* SHOW / HIDE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-slate-400 hover:text-indigo-600"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+
           </div>
         </div>
 

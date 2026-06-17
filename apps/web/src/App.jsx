@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Toaster } from "react-hot-toast";
 
 import LandingPage from "./pages/Landing";
 import LumoraLoader from "./Components/LumoraLoader";
@@ -25,6 +26,7 @@ function App() {
   return (
     <>
       {loading && <LumoraLoader />}
+      <Toaster position="top-right" reverseOrder={false} />
 
       {!loading && (
         <BrowserRouter>

@@ -61,9 +61,18 @@ async function login(req, res) {
 }
 
 async function me(req, res) {
-  const user = await User.findById(req.user.userId).select("fullName email role studentId");
+  const user = await User.findById(req.user.id)
+    .select("fullName email role studentId");
+
   if (!user) return res.status(404).json({ message: "User not found" });
-  return res.json({ user });
+
+  return res.json({
+    id: user._id,
+    name: user.fullName, 
+    email: user.email,
+    role: user.role,
+    studentId: user.studentId,
+  });
 }
 
 module.exports = { login, me };

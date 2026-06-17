@@ -11,7 +11,15 @@ import {
   Twitter,
   Instagram,
   Linkedin,
+  Calculator,
+  FlaskConical,
+  Landmark,
+  Globe,
+  Monitor,
+  BarChart3,
+  Scale,
 } from "lucide-react";
+
 
 import LoginForm from "../Components/LoginForm.jsx";
 import { fetchTimetable } from "../services/timetableApi";
@@ -24,6 +32,7 @@ import syllabusImg from "../Assets/syllubus.jpg";
 import limitedImg from "../Assets/limited.jpg";
 import successImg from "../Assets/exam.jpg";
 import logo from "../Assets/logo1.png";
+
 
 export default function LandingPage() {
   const cards = [
@@ -80,6 +89,7 @@ export default function LandingPage() {
   const [timetable, setTimetable] = useState([]);
   const [ttLoading, setTtLoading] = useState(true);
   const [ttError, setTtError] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("Mathematics");
 
   const gradeOrder = {
     "Grade 6": 0,
@@ -143,37 +153,43 @@ export default function LandingPage() {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
+    const loadTimetable = async () => {
+      if (!selectedSubject) {
+        setTimetable([]);
+        setTtLoading(false);
+        return;
+      }
+
       try {
         setTtLoading(true);
         setTtError("");
 
-        const data = await fetchTimetable();
+        const data = await fetchTimetable(selectedSubject);
 
-        const sorted = (data || []).slice().sort((a, b) => {
-          const gA = gradeOrder[a.grade] ?? 999;
-          const gB = gradeOrder[b.grade] ?? 999;
-          if (gA !== gB) return gA - gB;
-
-          const dA = dayOrder[a.day] ?? 999;
-          const dB = dayOrder[b.day] ?? 999;
-          if (dA !== dB) return dA - dB;
-
-          return timeToMinutes(a.time) - timeToMinutes(b.time);
+        // ✅ SORT DATA HERE
+        const sortedData = [...data].sort((a, b) => {
+          return (
+            (gradeOrder[a.grade] ?? 999) - (gradeOrder[b.grade] ?? 999) ||
+            (dayOrder[a.day] ?? 999) - (dayOrder[b.day] ?? 999) ||
+            timeToMinutes(a.time) - timeToMinutes(b.time)
+          );
         });
 
-        if (mounted) setTimetable(sorted);
-      } catch (e) {
-        if (mounted) setTtError("Failed to load timetable. Please refresh.");
+        if (mounted) setTimetable(sortedData);
+
+      } catch (err) {
+        if (mounted) setTtError("Failed to load timetable.");
       } finally {
         if (mounted) setTtLoading(false);
       }
-    })();
+    };
+
+    loadTimetable();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [selectedSubject]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-indigo-100">
@@ -383,18 +399,98 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* TABLE */}
-      <section id="schedule" className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+      {/* SUBJECTS SECTION */}
+      <section id="courses" className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
 
         <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl md:text-4xl font-black">
-            Class <span className="text-indigo-600">Timetable</span>
+          <h2 className="text-3xl sm:text-4xl font-black">
+            Our <span className="text-indigo-600">Subjects</span>
           </h2>
+
+          <p className="text-slate-500 mt-3 max-w-4xl mx-auto text-sm sm:text-base">
+            Comprehensive subject coverage designed for Grades 6–11 with theory,
+            revision, and exam-focused learning.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+
+          {[
+            { name: "Mathematics", icon: Calculator, color: "text-blue-600 bg-blue-100" },
+            { name: "Science", icon: FlaskConical, color: "text-green-600 bg-green-100" },
+            { name: "English", icon: BookOpen, color: "text-purple-600 bg-purple-100" },
+            { name: "History", icon: Landmark, color: "text-amber-600 bg-amber-100" },
+            { name: "Geography", icon: Globe, color: "text-cyan-600 bg-cyan-100" },
+            { name: "ICT", icon: Monitor, color: "text-indigo-600 bg-indigo-100" },
+            { name: "Commerce", icon: BarChart3, color: "text-pink-600 bg-pink-100" },
+            { name: "Civics", icon: Scale, color: "text-gray-600 bg-gray-100" },
+          ].map((sub, i) => {
+            const Icon = sub.icon;
+
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  setSelectedSubject(sub.name);
+
+                  document.getElementById("schedule")?.scrollIntoView({
+                    behavior: "smooth",
+                  });
+                }}
+                className={`group cursor-pointer relative bg-white border rounded-xl p-5 text-center shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300
+          ${selectedSubject === sub.name ? "ring-2 ring-indigo-500" : ""}`}
+              >
+                {/* ICON */}
+                <div className={`w-12 h-12 mx-auto flex items-center justify-center rounded-xl mb-3 ${sub.color}`}>
+                  <Icon size={22} />
+                </div>
+
+                {/* NAME */}
+                <h3 className="font-semibold text-base text-slate-800">
+                  {sub.name}
+                </h3>
+
+                {/* DESC */}
+                <p className="text-xs text-slate-500 mt-1">
+                  Theory classes, revision, and exam preparation.
+                </p>
+
+                {/* HOVER OVERLAY */}
+                <div className="absolute inset-0 bg-white/40 backdrop-blur-xs text-black flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl">
+                  <span className="text-sm font-bold">View Timetable</span>
+                  <span className="text-xs mt-1 opacity-100">Click to explore</span>
+                </div>
+              </div>
+            );
+          })}
+
+        </div>
+      </section>
+
+      {/* TABLE */}
+      <section id="schedule" className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+
+        {/* HEADER */}
+        <div className="text-center mb-10">
+          <h2 className="text-3xl sm:text-4xl md:text-4xl font-black">
+            {selectedSubject ? (
+              <>
+                {selectedSubject}{" "}Class 
+                <span className="text-indigo-600"> Timetable</span>
+              </>
+            ) : (
+              <>
+                Class <span className="text-indigo-600">Timetable</span>
+              </>
+            )}
+          </h2>
+
           <p className="text-slate-500 mt-3 max-w-2xl mx-auto">
             Weekly structured learning schedule for Grades 6–11 covering theory and exam preparation.
           </p>
         </div>
 
+        {/* TABLE WRAPPER */}
         <div className="overflow-x-auto rounded-3xl border border-slate-200 shadow-xl bg-white">
 
           <table className="w-full min-w-175 text-left">
@@ -402,16 +498,10 @@ export default function LandingPage() {
             {/* HEADER */}
             <thead className="bg-linear-to-r from-indigo-600 to-indigo-500 text-white">
               <tr>
-                <th className="px-6 py-2 text-sm font-black uppercase tracking-wider">
-                  Grade
-                </th>
-                <th className="px-6 py-2 text-sm font-black uppercase tracking-wider">
-                  Day
-                </th>
-                <th className="px-6 py-2 text-sm font-black uppercase tracking-wider">
-                  Time
-                </th>
-                <th className="px-6 py-2 text-sm font-black uppercase tracking-wider text-center">
+                <th className="px-6 py-2 text-sm font-black uppercase">Grade</th>
+                <th className="px-6 py-2 text-sm font-black uppercase">Day</th>
+                <th className="px-6 py-2 text-sm font-black uppercase">Time</th>
+                <th className="px-6 py-2 text-sm font-black uppercase text-center">
                   Class Type
                 </th>
               </tr>
@@ -420,6 +510,7 @@ export default function LandingPage() {
             {/* BODY */}
             <tbody className="divide-y divide-slate-100">
 
+              {/* LOADING */}
               {ttLoading && (
                 <tr>
                   <td colSpan="4" className="px-6 py-10 text-center text-slate-500 font-semibold">
@@ -428,6 +519,7 @@ export default function LandingPage() {
                 </tr>
               )}
 
+              {/* ERROR */}
               {!ttLoading && ttError && (
                 <tr>
                   <td colSpan="4" className="px-6 py-10 text-center text-red-600 font-bold">
@@ -436,15 +528,26 @@ export default function LandingPage() {
                 </tr>
               )}
 
+              {/* NO SUBJECT (only if you ever reset it) */}
+              {!selectedSubject && !ttLoading && !ttError && (
+                <tr>
+                  <td colSpan="4" className="px-6 py-12 text-center text-slate-500 font-semibold">
+                    Please select a subject to view timetable 📚
+                  </td>
+                </tr>
+              )}
+
+              {/* DATA */}
               {!ttLoading &&
                 !ttError &&
+                selectedSubject &&
+                timetable.length > 0 &&
                 timetable.map((r, index) => (
                   <tr
                     key={r._id}
-                    className={`transition hover:bg-indigo-50 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                    className={`hover:bg-indigo-50 transition ${index % 2 === 0 ? "bg-white" : "bg-slate-50"
                       }`}
                   >
-
                     {/* Grade */}
                     <td className="px-5 py-3">
                       <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-100 text-indigo-700">
@@ -453,34 +556,38 @@ export default function LandingPage() {
                     </td>
 
                     {/* Day */}
-                    <td className="px-6 py-1 font-semibold text-slate-700">
+                    <td className="px-6 py-2 font-semibold text-slate-700">
                       {r.day}
                     </td>
 
                     {/* Time */}
-                    <td className="px-6 py-1">
-                      <div className="font-bold text-slate-900">
-                        {r.time}
-                      </div>
+                    <td className="px-6 py-2 font-bold text-slate-900">
+                      {r.time}
                     </td>
 
                     {/* Class Type */}
-                    <td className="px-6 py-1 text-center">
+                    <td className="px-6 py-2 text-center">
                       <span className="inline-flex items-center px-4 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-700">
                         {r.classType || "Theory & Paper"}
                       </span>
                     </td>
-
                   </tr>
                 ))}
 
-              {!ttLoading && !ttError && timetable.length === 0 && (
-                <tr>
-                  <td colSpan="4" className="px-6 py-10 text-center text-slate-500 font-semibold">
-                    No timetable data yet
-                  </td>
-                </tr>
-              )}
+              {/* NO DATA */}
+              {selectedSubject &&
+                !ttLoading &&
+                !ttError &&
+                timetable.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-12 text-center text-slate-500 font-semibold">
+                      No timetable available for{" "}
+                      <span className="text-indigo-600 font-bold">
+                        {selectedSubject}
+                      </span>
+                    </td>
+                  </tr>
+                )}
 
             </tbody>
           </table>
@@ -488,7 +595,7 @@ export default function LandingPage() {
 
         {/* FOOT NOTE */}
         <div className="mt-6 text-center text-slate-500 text-sm font-medium">
-          ✔ Theory lessons &nbsp; • &nbsp; ✔ Exam paper discussions &nbsp; • &nbsp; ✔ Early syllabus completion
+          ✔ Theory lessons • ✔ Exam paper discussions • ✔ Early syllabus completion
         </div>
 
       </section>
