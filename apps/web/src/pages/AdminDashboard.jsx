@@ -3,6 +3,7 @@ import AdminNavbar from "../Components/AdminNavbar";
 import AdminSidebar from "../Components/AdminSidebar";
 import AdminTimetableEditor from "../Components/AdminTimetableEditor";
 import AdminStudentsPanel from "../Components/AdminStudentsPanel";
+import AdminSubjects from "./AdminSubjects";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Timetable");
@@ -38,6 +39,7 @@ export default function AdminDashboard() {
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === "Timetable" && <AdminTimetableEditor />}
           {activeTab === "Students" && <AdminStudentsPanel />}
+          {activeTab === "Subjects" && <AdminSubjects />}
         </div>
 
       </div>

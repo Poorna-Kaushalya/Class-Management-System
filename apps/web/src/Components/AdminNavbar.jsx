@@ -7,6 +7,7 @@ import {
   LogOut,
   Users,
   BookOpen,
+  Layers,
 } from "lucide-react";
 
 import { getCurrentUser } from "../services/authApi";
@@ -20,6 +21,7 @@ export default function AdminNavbar({
     { name: "Timetable", icon: BookOpen },
     { name: "Students", icon: Users },
     { name: "Teachers", icon: Users },
+     { name: "Subjects", icon: Layers },
     { name: "Settings", icon: Settings },
   ];
 

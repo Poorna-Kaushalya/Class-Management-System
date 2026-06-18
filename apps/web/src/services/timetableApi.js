@@ -13,12 +13,12 @@ function getAuthConfig() {
 }
 
 // GET (public)
-export async function fetchTimetable(subject) {
-  const res = await axios.get(API, {
-    params: subject ? { subject } : {},
-  });
+export const fetchTimetable = async (subject) => {
+  const res = await axios.get(
+    `http://localhost:5000/api/timetable?subject=${subject}`
+  );
   return res.data;
-}
+};
 
 // CREATE (admin)
 export async function createTimetableRow(data) {

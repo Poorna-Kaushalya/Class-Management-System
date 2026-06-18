@@ -9,6 +9,7 @@ import {
     Eye,
     EyeOff,
     LogOut,
+    Layers,
 } from "lucide-react";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,6 +37,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }) {
         { name: "Timetable", icon: BookOpen },
         { name: "Students", icon: Users },
         { name: "Teachers", icon: Users },
+        { name: "Subjects", icon: Layers },
         { name: "Settings", icon: Settings },
     ];
 

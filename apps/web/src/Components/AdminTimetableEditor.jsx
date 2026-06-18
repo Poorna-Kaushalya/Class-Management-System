@@ -44,11 +44,13 @@ export default function AdminTimetableEditor() {
 
   const [rows, setRows] = useState([]);
   const [busyId, setBusyId] = useState(null);
-  const [selectedSubject, setSelectedSubject] = useState("Mathematics");
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [subjects, setSubjects] = useState([]);
+  const subjectNames = subjects.map((s) => s.name);
 
   const [form, setForm] = useState({
     grade: "Grade 6",
-    subject: "Mathematics",
+    subject: "",
     day: "Thursday",
     time: "",
     classType: "Theory & Paper",
@@ -97,6 +99,8 @@ export default function AdminTimetableEditor() {
     },
   };
 
+  const selectedSubjectData = selectedSubject;
+
   function timeToMinutes(t = "") {
     const start = t.split("–")[0]?.split("-")[0]?.trim() || "";
     const m = start.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
@@ -123,13 +127,16 @@ export default function AdminTimetableEditor() {
     });
   }
 
-  async function load(subject = selectedSubject) {
-    const data = await fetchTimetable(subject);
+  async function load(subjectId = selectedSubject?._id) {
+    if (!subjectId) return;
+    const data = await fetchTimetable(subjectId);
     setRows(sortRows(data));
   }
 
   useEffect(() => {
-    load(selectedSubject);
+    if (selectedSubject?._id) {
+      load(selectedSubject._id);
+    }
   }, [selectedSubject]);
 
   async function addRow(e) {
@@ -147,6 +154,31 @@ export default function AdminTimetableEditor() {
 
     load(selectedSubject);
   }
+
+  useEffect(() => {
+    async function loadSubjects() {
+      try {
+        const res = await fetch("http://localhost:5000/api/subjects");
+        const data = await res.json();
+
+        setSubjects(data);
+
+        // AUTO SELECT FIRST SUBJECT
+        if (data.length > 0) {
+          setSelectedSubject(data[0]);
+
+          setForm((prev) => ({
+            ...prev,
+            subject: data[0]._id,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load subjects");
+      }
+    }
+
+    loadSubjects();
+  }, []);
 
   async function update(id, patch) {
     try {
@@ -197,36 +229,26 @@ export default function AdminTimetableEditor() {
 
         {/* SUBJECT CARDS */}
         <div className="flex flex-wrap gap-3 w-full justify-center">
-          {SUBJECTS.map((subject) => {
-
-            const colors = {
-              Mathematics: "bg-blue-100 text-blue-700 border-blue-300",
-              Science: "bg-green-100 text-green-700 border-green-300",
-              English: "bg-purple-100 text-purple-700 border-purple-300",
-              History: "bg-amber-100 text-amber-700 border-amber-300",
-              Geography: "bg-cyan-100 text-cyan-700 border-cyan-300",
-              ICT: "bg-indigo-100 text-indigo-700 border-indigo-300",
-              Commerce: "bg-pink-100 text-pink-700 border-pink-300",
-              Civics: "bg-slate-100 text-slate-700 border-slate-300",
-            };
+          {subjects.map((subject) => {
 
             const active =
-              selectedSubject === subject
-                ? SUBJECT_COLORS[subject]?.dark + " border-transparent shadow-lg scale-105"
-                : SUBJECT_COLORS[subject]?.light + " border";
+              selectedSubject?._id === subject._id
+                ? SUBJECT_COLORS[subject.name]?.dark + " border-transparent shadow-lg scale-105"
+                : SUBJECT_COLORS[subject.name]?.light + " border";
 
             return (
               <button
-                key={subject}
-                onClick={() => setSelectedSubject(subject)}
-                className={`
-            w-34 h-10 flex items-center justify-center
-            rounded-xl border font-bold text-sm transition
-            hover:scale-105 active:scale-95 mb-2
-            ${active}
-          `}
+                key={subject._id}
+                onClick={() => {
+                  setSelectedSubject(subject);
+                  setForm((prev) => ({
+                    ...prev,
+                    subject: subject._id,
+                  }));
+                }}
+                className={`w-34 h-10 rounded-xl ${active}`}
               >
-                {subject}
+                {subject.name}
               </button>
             );
           })}
@@ -247,8 +269,10 @@ export default function AdminTimetableEditor() {
           value={form.subject}
           onChange={(e) => setForm({ ...form, subject: e.target.value })}
         >
-          {SUBJECTS.map((s) => (
-            <option key={s} value={s}>{s}</option>
+          {subjects.map((s) => (
+            <option key={s._id} value={s._id}>
+              {s.name}
+            </option>
           ))}
         </select>
 
@@ -306,7 +330,7 @@ export default function AdminTimetableEditor() {
         <table className="w-full text-sm">
           <thead
             className={`
-    ${SUBJECT_COLORS[selectedSubject]?.main || "bg-indigo-600 text-white"}
+    ${selectedSubjectData?.colors?.main || "bg-indigo-600"} text-white
   `}
           >
             <tr>
@@ -334,14 +358,13 @@ export default function AdminTimetableEditor() {
           <tbody>
             {rows.map((r) => (
               <tr
-  key={r._id}
-  className="border-t bg-white hover:bg-slate-50 transition"
->
+                key={r._id}
+                className="border-t bg-white hover:bg-slate-50 transition"
+              >
                 <td className="px-4 py-1.5">
                   <select
                     className={selectClass}
                     value={r.grade}
-                    disabled={busyId === r._id}
                     onChange={(e) => update(r._id, { grade: e.target.value })}
                   >
                     {GRADES.map((g) => (
@@ -355,11 +378,13 @@ export default function AdminTimetableEditor() {
                 <td className="px-4 py-1.5">
                   <select
                     className={selectClass}
-                    value={r.subject}
+                    value={r.subject?._id}
                     onChange={(e) => update(r._id, { subject: e.target.value })}
                   >
-                    {SUBJECTS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    {subjects.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                      </option>
                     ))}
                   </select>
                 </td>
