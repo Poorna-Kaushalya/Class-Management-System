@@ -54,6 +54,49 @@ export default function AdminTimetableEditor() {
     classType: "Theory & Paper",
   });
 
+  const SUBJECT_COLORS = {
+    Mathematics: {
+      light: "bg-blue-200 text-blue-700",
+      main: "bg-blue-400 text-white",
+      dark: "bg-blue-500 text-white",
+    },
+    Science: {
+      light: "bg-green-200 text-green-700",
+      main: "bg-green-400 text-white",
+      dark: "bg-green-500 text-white",
+    },
+    English: {
+      light: "bg-purple-200 text-purple-700",
+      main: "bg-purple-400 text-white",
+      dark: "bg-purple-500 text-white",
+    },
+    History: {
+      light: "bg-amber-200 text-amber-700",
+      main: "bg-amber-400 text-white",
+      dark: "bg-amber-500 text-white",
+    },
+    Geography: {
+      light: "bg-cyan-200 text-cyan-700",
+      main: "bg-cyan-400 text-white",
+      dark: "bg-cyan-500 text-white",
+    },
+    ICT: {
+      light: "bg-indigo-200 text-indigo-700",
+      main: "bg-indigo-400 text-white",
+      dark: "bg-indigo-500 text-white",
+    },
+    Commerce: {
+      light: "bg-pink-200 text-pink-700",
+      main: "bg-pink-400 text-white",
+      dark: "bg-pink-500 text-white",
+    },
+    Civics: {
+      light: "bg-slate-200 text-slate-700",
+      main: "bg-slate-400 text-white",
+      dark: "bg-slate-500 text-white",
+    },
+  };
+
   function timeToMinutes(t = "") {
     const start = t.split("–")[0]?.split("-")[0]?.trim() || "";
     const m = start.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
@@ -169,8 +212,8 @@ export default function AdminTimetableEditor() {
 
             const active =
               selectedSubject === subject
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                : colors[subject] || "bg-white text-slate-700 border-slate-300";
+                ? SUBJECT_COLORS[subject]?.dark + " border-transparent shadow-lg scale-105"
+                : SUBJECT_COLORS[subject]?.light + " border";
 
             return (
               <button
@@ -256,10 +299,16 @@ export default function AdminTimetableEditor() {
         <button className={btnPrimary}>Add Timetable Entry</button>
       </form>
 
+      <hr className="border-slate-600 mb-4 mt-4" />
+
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-indigo-600 text-white">
+          <thead
+            className={`
+    ${SUBJECT_COLORS[selectedSubject]?.main || "bg-indigo-600 text-white"}
+  `}
+          >
             <tr>
               <th className="px-4 py-2 text-left font-black uppercase tracking-wide text-xs">
                 Grade
@@ -284,7 +333,10 @@ export default function AdminTimetableEditor() {
 
           <tbody>
             {rows.map((r) => (
-              <tr key={r._id} className="border-t">
+              <tr
+  key={r._id}
+  className="border-t bg-white hover:bg-slate-50 transition"
+>
                 <td className="px-4 py-1.5">
                   <select
                     className={selectClass}
