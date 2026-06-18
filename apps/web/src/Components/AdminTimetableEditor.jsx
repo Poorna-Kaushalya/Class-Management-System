@@ -213,7 +213,7 @@ export default function AdminTimetableEditor() {
     "bg-red-600 text-white rounded-lg font-black text-sm px-2 py-1.5 hover:bg-red-700 active:scale-95 transition";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 relative -mt-7">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 relative">
 
       <div className="w-full mb-6">
 

@@ -36,7 +36,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* SCROLLABLE CONTENT ONLY */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-2">
           {activeTab === "Timetable" && <AdminTimetableEditor />}
           {activeTab === "Students" && <AdminStudentsPanel />}
           {activeTab === "Subjects" && <AdminSubjects />}

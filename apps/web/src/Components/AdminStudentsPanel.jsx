@@ -26,7 +26,7 @@ export default function AdminStudentsPanel() {
     return ["", ...Array.from({ length: 6 }, (_, i) => String(y - i))];
   }, []);
 
-  // ✅ Toast
+  // Toast
   const [toast, setToast] = useState({ show: false, type: "success", message: "" });
   function showToast(type, message) {
     setToast({ show: true, type, message });
@@ -71,7 +71,7 @@ export default function AdminStudentsPanel() {
     setForm((p) => ({ ...p, [k]: v }));
   }
 
-  // ✅ LOAD + SORT BY STUDENT ID
+  //  LOAD + SORT BY STUDENT ID
   async function load() {
     try {
       setErr("");
@@ -132,7 +132,7 @@ export default function AdminStudentsPanel() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      showToast("success", `Student created: ${form.fullName} ✅`);
+      showToast("success", `Student created: ${form.fullName} `);
       await load();
       setTimeout(() => setOpenAdd(false), 500);
     } catch (e2) {
@@ -144,7 +144,7 @@ export default function AdminStudentsPanel() {
     }
   }
 
-  // ✅ Attendance (Toast)
+  // Attendance (Toast)
   async function markAttendance(studentUserId, status, name) {
     if (!attDate) return showToast("warning", "Please select a date first.");
 
@@ -159,7 +159,7 @@ export default function AdminStudentsPanel() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      showToast("success", `${name} marked as ${status} ✅`);
+      showToast("success", `${name} marked as ${status}`);
     } catch (e) {
       showToast("error", e?.response?.data?.message || "Failed to save attendance");
     } finally {
@@ -185,7 +185,7 @@ export default function AdminStudentsPanel() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      showToast("success", `Deleted: ${deleteTarget.fullName} ✅`);
+      showToast("success", `Deleted: ${deleteTarget.fullName} `);
       setOpenDelete(false);
       setDeleteTarget(null);
       await load();
@@ -199,8 +199,8 @@ export default function AdminStudentsPanel() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-      {/* ✅ Toast popup */}
+    <div className="p-4">
+      {/*  Toast popup */}
       <Toast
         show={toast.show}
         type={toast.type}
@@ -210,38 +210,44 @@ export default function AdminStudentsPanel() {
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-3xl font-black text-indigo-700">Students</h2>
-          <p className="text-slate-600 font-semibold mt-1">Search and view student dashboards by grade.</p>
+
+        {/* CENTERED TITLE SECTION */}
+        <div className="flex-1 flex flex-col items-center text-center">
+          <h3 className="text-2xl font-black text-indigo-700">
+            Students
+          </h3>
+
+          <p className="text-slate-600 font-semibold mt-0">
+            Search and view student dashboards by grade.
+          </p>
         </div>
 
         <button
           onClick={openAddModal}
-          className="rounded-xl bg-slate-900 text-white px-5 py-3 text-sm font-black hover:bg-slate-800 active:scale-95 transition"
+          className="rounded-xl bg-blue-700 text-white px-5 py-2 text-xs font-black hover:bg-blue-800 active:scale-95 transition"
         >
           + Add Student
         </button>
       </div>
 
       {/* Attendance Bar */}
-      <div className="mt-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mt-2 mb-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3">
         <div>
           <div className="text-sm font-black text-slate-800">Mark Attendance</div>
           <div className="text-xs font-semibold text-slate-600">Select one date, then mark each student as Present/Absent.</div>
         </div>
 
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-5 items-center">
           <label className="text-sm font-black text-slate-800">Date</label>
           <input type="date" className={inp()} value={attDate} onChange={(e) => setAttDate(e.target.value)} />
         </div>
       </div>
 
-      {/* ✅ removed old attMsg text */}
+      <div className="border-t" />
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-6 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3 items-end ">
         <div>
-          <label className="text-sm font-black text-slate-800">Grade</label>
           <select className={sel()} value={grade} onChange={(e) => setGrade(e.target.value)}>
             <option value="">All Grades</option>
             {GRADES.map((g) => (
@@ -253,7 +259,6 @@ export default function AdminStudentsPanel() {
         </div>
 
         <div>
-          <label className="text-sm font-black text-slate-800">Registered Year (optional)</label>
           <select className={sel()} value={year} onChange={(e) => setYear(e.target.value)}>
             <option value="">All years</option>
             {YEARS.filter(Boolean).map((y) => (
@@ -265,7 +270,6 @@ export default function AdminStudentsPanel() {
         </div>
 
         <div>
-          <label className="text-sm font-black text-slate-800">Search</label>
           <input
             className={inp()}
             placeholder="Search by name / email / studentId"
@@ -280,62 +284,81 @@ export default function AdminStudentsPanel() {
       </div>
 
       {/* Table */}
-      <div className="mt-6 rounded-2xl overflow-hidden border border-slate-200">
-        <div className="bg-indigo-600 text-white grid grid-cols-5 px-4 py-3 text-sm font-black">
-          <div>STUDENT</div>
-          <div>GRADE</div>
-          <div>STUDENT ID</div>
-          <div>ATTENDANCE</div>
-          <div>ACTION</div>
+      <div className="mt-3 rounded-xl overflow-hidden border border-slate-200">
+
+        {/* HEADER */}
+        <div className="bg-indigo-600 text-white grid grid-cols-12 px-4 py-2 text-xs font-black">
+          <div className="col-span-1">No</div>
+          <div className="col-span-4">STUDENT</div>
+          <div className="col-span-2 text-center">GRADE</div>
+          <div className="col-span-2 text-center">ID</div>
+          <div className="col-span-2 text-center">ATTEND</div>
+          <div className="col-span-1 text-center">ACTION</div>
         </div>
 
+        {/* BODY */}
         <div className="bg-white">
-          {err && <div className="p-6 text-center text-rose-600 font-black">{err}</div>}
+          {students.map((s, i) => (
+            <div
+              key={s._id}
+              className="grid grid-cols-12 px-4 py-2 border-t text-xs items-center hover:bg-slate-50 transition"
+            >
 
-          {!err && students.length === 0 && (
-            <div className="p-6 text-center text-slate-500 font-bold">No students found.</div>
-          )}
-
-          {!err &&
-            students.map((s) => (
-              <div key={s._id} className="grid grid-cols-5 px-4 py-3 border-t text-sm items-center">
-                <div className="font-black text-slate-900">{s.fullName}</div>
-                <div className="font-bold text-slate-700">{s.classId || "-"}</div>
-                <div className="font-semibold text-slate-700">{s.studentId || "-"}</div>
-
-                <div className="flex gap-2">
-                  <button
-                    disabled={!attDate || attBusyId === s._id}
-                    onClick={() => markAttendance(s._id, "PRESENT", s.fullName)}
-                    className="rounded-xl bg-emerald-600 text-white px-3 py-2 text-xs font-black hover:bg-emerald-700 disabled:opacity-60"
-                  >
-                    {attBusyId === s._id ? "..." : "Present"}
-                  </button>
-                  <button
-                    disabled={!attDate || attBusyId === s._id}
-                    onClick={() => markAttendance(s._id, "ABSENT", s.fullName)}
-                    className="rounded-xl bg-rose-600 text-white px-3 py-2 text-xs font-black hover:bg-rose-700 disabled:opacity-60"
-                  >
-                    {attBusyId === s._id ? "..." : "Absent"}
-                  </button>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    className="bg-slate-900 text-white rounded-xl px-4 py-2 text-xs font-black hover:bg-slate-800"
-                    onClick={() => navigate(`/admin/students/${s._id}`)}
-                  >
-                    View
-                  </button>
-                  <button
-                    className="bg-rose-600 text-white rounded-xl px-4 py-2 text-xs font-black hover:bg-rose-700"
-                    onClick={() => askDelete(s)}
-                  >
-                    Delete
-                  </button>
-                </div>
+              {/* NUMBER */}
+              <div className="col-span-1 text-slate-500 font-semibold">
+                {i + 1}
               </div>
-            ))}
+
+              {/* NAME (WIDER) */}
+              <div className="col-span-4">
+                <div className="font-bold text-slate-900">{s.fullName} </div>
+                <div className="text-xs text-slate-500">{s.email}</div>
+              </div>
+
+              {/* GRADE */}
+              <div className="col-span-2 text-center font-semibold text-slate-700">
+                {s.classId || "-"}
+              </div>
+
+              {/* STUDENT ID */}
+              <div className="col-span-2 text-center text-slate-600">
+                {s.studentId}
+              </div>
+
+              {/* ATTENDANCE */}
+              <div className="col-span-2 flex justify-center gap-1">
+                <button
+                  onClick={() => markAttendance(s._id, "PRESENT", s.fullName)}
+                  className="px-2 py-1 text-xs rounded-lg bg-emerald-500 text-white hover:bg-emerald-600"
+                >
+                  Present
+                </button>
+                <button
+                  onClick={() => markAttendance(s._id, "ABSENT", s.fullName)}
+                  className="px-2 py-1 text-xs rounded-lg bg-rose-500 text-white hover:bg-rose-600"
+                >
+                  Absent
+                </button>
+              </div>
+
+              {/* ACTION */}
+              <div className="col-span-1 flex justify-center gap-1">
+                <button
+                  onClick={() => navigate(`/admin/students/${s._id}`)}
+                  className="px-2 py-1 text-xs bg-slate-800 text-white rounded-lg"
+                >
+                  View
+                </button>
+
+                <button
+                  onClick={() => askDelete(s)}
+                  className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -474,11 +497,11 @@ function Field({ label, children }) {
 }
 
 function inp() {
-  return "w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-600 bg-white";
+  return "w-full border border-slate-300 rounded-xl px-2 py-1.5 text-sm font-semibold outline-none focus:border-indigo-600 bg-white";
 }
 function sel() {
-  return "w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold outline-none focus:border-indigo-600 bg-white";
+  return "w-full border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-semibold outline-none focus:border-indigo-600 bg-white";
 }
 function btnPrimary() {
-  return "w-full rounded-xl bg-indigo-600 text-white px-4 py-3 text-sm font-black hover:bg-indigo-700";
+  return "w-1/2 rounded-xl bg-indigo-600 text-white px-2 py-1.5 text-sm font-black hover:bg-indigo-700";
 }
