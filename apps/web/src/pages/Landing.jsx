@@ -23,7 +23,7 @@ import {
 
 import LoginForm from "../Components/LoginForm.jsx";
 import { fetchTimetable } from "../services/timetableApi";
-
+import { fetchSubjects } from "../services/subjectApi";
 import Man from "../Assets/Man.png";
 import learnImg from "../Assets/think.jpg";
 import attentionImg from "../Assets/personal.jpg";
@@ -90,6 +90,8 @@ export default function LandingPage() {
   const [ttLoading, setTtLoading] = useState(true);
   const [ttError, setTtError] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("Mathematics");
+  const [subjects, setSubjects] = useState([]);
+  const [subLoading, setSubLoading] = useState(true);
 
   const gradeOrder = {
     "Grade 6": 0,
@@ -166,7 +168,7 @@ export default function LandingPage() {
 
         const data = await fetchTimetable(selectedSubject);
 
-        // ✅ SORT DATA HERE
+        //  SORT DATA HERE
         const sortedData = [...data].sort((a, b) => {
           return (
             (gradeOrder[a.grade] ?? 999) - (gradeOrder[b.grade] ?? 999) ||
@@ -190,6 +192,29 @@ export default function LandingPage() {
       mounted = false;
     };
   }, [selectedSubject]);
+
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        setSubLoading(true);
+        const data = await fetchSubjects();
+
+        setSubjects(data);
+
+        // OPTIONAL: auto-select first subject
+        if (data.length > 0) {
+          setSelectedSubject(data[0].name);
+        }
+
+      } catch (err) {
+        console.error("Failed to load subjects");
+      } finally {
+        setSubLoading(false);
+      }
+    };
+
+    loadSubjects();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-indigo-100">
@@ -415,21 +440,31 @@ export default function LandingPage() {
 
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
 
-          {[
-            { name: "Mathematics", icon: Calculator, color: "text-blue-600 bg-blue-100" },
-            { name: "Science", icon: FlaskConical, color: "text-green-600 bg-green-100" },
-            { name: "English", icon: BookOpen, color: "text-purple-600 bg-purple-100" },
-            { name: "History", icon: Landmark, color: "text-amber-600 bg-amber-100" },
-            { name: "Geography", icon: Globe, color: "text-cyan-600 bg-cyan-100" },
-            { name: "ICT", icon: Monitor, color: "text-indigo-600 bg-indigo-100" },
-            { name: "Commerce", icon: BarChart3, color: "text-pink-600 bg-pink-100" },
-            { name: "Civics", icon: Scale, color: "text-gray-600 bg-gray-100" },
-          ].map((sub, i) => {
-            const Icon = sub.icon;
+          {subLoading && (
+            <p className="col-span-full text-center text-slate-500">
+              Loading subjects...
+            </p>
+          )}
+
+          {!subLoading && subjects.map((sub, i) => {
+
+            // Optional icon mapping
+            const iconMap = {
+              Mathematics: Calculator,
+              Science: FlaskConical,
+              English: BookOpen,
+              History: Landmark,
+              Geography: Globe,
+              ICT: Monitor,
+              Commerce: BarChart3,
+              Civics: Scale,
+            };
+
+            const Icon = iconMap[sub.name] || BookOpen;
 
             return (
               <div
-                key={i}
+                key={sub._id}
                 onClick={() => {
                   setSelectedSubject(sub.name);
 
@@ -438,10 +473,11 @@ export default function LandingPage() {
                   });
                 }}
                 className={`group cursor-pointer relative bg-white border rounded-xl p-5 text-center shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300
-          ${selectedSubject === sub.name ? "ring-2 ring-indigo-500" : ""}`}
+        ${selectedSubject === sub.name ? "ring-2 ring-indigo-500" : ""}`}
               >
+
                 {/* ICON */}
-                <div className={`w-12 h-12 mx-auto flex items-center justify-center rounded-xl mb-3 ${sub.color}`}>
+                <div className="w-12 h-12 mx-auto flex items-center justify-center rounded-xl mb-3 bg-indigo-100 text-indigo-600">
                   <Icon size={22} />
                 </div>
 
@@ -455,11 +491,11 @@ export default function LandingPage() {
                   Theory classes, revision, and exam preparation.
                 </p>
 
-                {/* HOVER OVERLAY */}
-                <div className="absolute inset-0 bg-white/40 backdrop-blur-xs text-black flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl">
+                {/* HOVER */}
+                <div className="absolute inset-0 bg-white/40 backdrop-blur-xs flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl">
                   <span className="text-sm font-bold">View Timetable</span>
-                  <span className="text-xs mt-1 opacity-100">Click to explore</span>
                 </div>
+
               </div>
             );
           })}
@@ -475,7 +511,7 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl md:text-4xl font-black">
             {selectedSubject ? (
               <>
-                {selectedSubject}{" "}Class 
+                {selectedSubject}{" "}Class
                 <span className="text-indigo-600"> Timetable</span>
               </>
             ) : (

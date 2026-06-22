@@ -230,11 +230,13 @@ export default function AdminTimetableEditor() {
         {/* SUBJECT CARDS */}
         <div className="flex flex-wrap gap-3 w-full justify-center">
           {subjects.map((subject) => {
+            const colors = subject.colors || {
+              light: "bg-gray-200 text-gray-700",
+              main: "bg-gray-400 text-white",
+              dark: "bg-gray-500 text-white",
+            };
 
-            const active =
-              selectedSubject?._id === subject._id
-                ? SUBJECT_COLORS[subject.name]?.dark + " border-transparent shadow-lg scale-105"
-                : SUBJECT_COLORS[subject.name]?.light + " border";
+            const isActive = selectedSubject?._id === subject._id;
 
             return (
               <button
@@ -246,7 +248,12 @@ export default function AdminTimetableEditor() {
                     subject: subject._id,
                   }));
                 }}
-                className={`w-34 h-10 rounded-xl ${active}`}
+                className={`w-34 h-10 rounded-xl font-bold transition-all duration-200
+        ${isActive
+                    ? colors.main + " shadow-lg scale-105"
+                    : colors.light + " border"
+                  }
+      `}
               >
                 {subject.name}
               </button>
@@ -329,9 +336,7 @@ export default function AdminTimetableEditor() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead
-            className={`
-    ${selectedSubjectData?.colors?.main || "bg-indigo-600"} text-white
-  `}
+            className={`${selectedSubject?.colors?.dark || "bg-indigo-700"} text-white`}
           >
             <tr>
               <th className="px-4 py-2 text-left font-black uppercase tracking-wide text-xs">
