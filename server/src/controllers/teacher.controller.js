@@ -56,6 +56,7 @@ exports.getTeachers = async (req, res) => {
   try {
     const teachers = await Teacher.find()
       .populate("subjects")
+      .select("-passwordHash")
       .sort({ createdAt: -1 });
 
     res.json({ teachers });
@@ -67,7 +68,9 @@ exports.getTeachers = async (req, res) => {
 // GET SINGLE TEACHER
 exports.getTeacher = async (req, res) => {
   try {
-    const teacher = await Teacher.findById(req.params.id).populate("subjects");
+    const teacher = await Teacher.findById(req.params.id)
+      .populate("subjects")
+      .select("-passwordHash");
 
     if (!teacher) return res.status(404).json({ message: "Not found" });
 
@@ -77,11 +80,12 @@ exports.getTeacher = async (req, res) => {
   }
 };
 
-// UPDATE TEACHER
+// Update Tecaher
 exports.updateTeacher = async (req, res) => {
   try {
     const update = { ...req.body };
 
+    // password handling
     if (update.password) {
       update.passwordHash = await bcrypt.hash(update.password, 10);
       delete update.password;
@@ -95,8 +99,19 @@ exports.updateTeacher = async (req, res) => {
 
     if (!teacher) return res.status(404).json({ message: "Not found" });
 
+    // SYNC SUBJECT → TEACHER NAME
+    if (update.subjects) {
+      const Subject = require("../models/Subject.model");
+
+      await Subject.updateMany(
+        { _id: { $in: update.subjects } },
+        { teacher: teacher.name }
+      );
+    }
+
     res.json({ message: "Updated", teacher });
   } catch (err) {
+    console.error(err);
     res.status(400).json({ message: "Update failed" });
   }
 };
@@ -114,7 +129,7 @@ exports.deleteTeacher = async (req, res) => {
 // CHANGE ROLE (ADMIN <-> TEACHER)
 exports.changeTeacherRole = async (req, res) => {
   try {
-    const { roles } = req.body; 
+    const { roles } = req.body;
     // example: ["ADMIN"] or ["TEACHER"] or ["ADMIN","TEACHER"]
 
     const teacher = await Teacher.findByIdAndUpdate(
