@@ -11,6 +11,7 @@ const noticeRoutes = require("./routes/notices.routes");
 const marksRoutes = require("./routes/marks.routes");
 const adminStudentRoutes = require("./routes/admin.students.routes");
 const subjectRoutes = require("./routes/subject.routes");
+const teacherRoutes = require("./routes/teacher.routes");
 
 const app = express();
 
@@ -33,6 +34,6 @@ app.use("/api/notices", noticeRoutes);
 app.use("/api/marks", marksRoutes);
 app.use("/api/admin/students", adminStudentRoutes);
 app.use("/api/subjects", subjectRoutes);
-
+app.use("/api/teachers", teacherRoutes);
 
 module.exports = app;
