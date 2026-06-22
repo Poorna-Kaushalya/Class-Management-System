@@ -4,6 +4,7 @@ import AdminSidebar from "../Components/AdminSidebar";
 import AdminTimetableEditor from "../Components/AdminTimetableEditor";
 import AdminStudentsPanel from "../Components/AdminStudentsPanel";
 import AdminSubjects from "./AdminSubjects";
+import AdminTeachersPanel from "../Components/AdminTeachersPanel";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Timetable");
@@ -40,6 +41,7 @@ export default function AdminDashboard() {
           {activeTab === "Timetable" && <AdminTimetableEditor />}
           {activeTab === "Students" && <AdminStudentsPanel />}
           {activeTab === "Subjects" && <AdminSubjects />}
+          {activeTab === "Teachers" && <AdminTeachersPanel />}
         </div>
 
       </div>
