@@ -134,23 +134,3 @@ Feel free to fork the repository and submit a pull request.
 ## 📄 License
 
 This project is for **educational purposes**.
-
----
-
-## ✨ Author
-
-Developed with ❤️ by **[Your Name]**
-Final-year undergraduate project
-
-```
-
----
-
-If you want, I can also:
-- Customize this for **university submission**
-- Add **screenshots section**
-- Write a **professional project abstract**
-- Create a **deployment guide**
-
-Just tell me 👍
-```
